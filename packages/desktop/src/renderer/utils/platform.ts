@@ -56,7 +56,7 @@ export const resolveBackendAssetUrl = (url: string | undefined): string | undefi
   if (!url) return url;
   if (isAbsoluteAssetUrl(url) || /^data:/i.test(url)) return url;
   if (url.startsWith('/')) {
-    return isElectronDesktop() ? `${getBaseUrl()}${url}` : url;
+    return `${getBaseUrl()}${url}`;
   }
   return url;
 };

@@ -12,6 +12,7 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import {
   getBaseUrl,
+  normalizeWebUiBasePath,
   httpGet,
   httpPost,
   httpPut,
@@ -116,6 +117,20 @@ describe('httpBridge', () => {
       const result = getBaseUrl();
 
       expect(result).toBe('');
+    });
+
+    it('keeps WebUI HTTP calls inside a configured same-origin base path', () => {
+      vi.stubGlobal('window', { __aionuiWebBasePath: '/integrations/aion/' });
+      vi.stubGlobal('document', {});
+
+      expect(getBaseUrl()).toBe('/integrations/aion');
+    });
+
+    it('rejects absolute, protocol-relative, query, and fragment base paths', () => {
+      expect(normalizeWebUiBasePath('https://example.test/aion')).toBe('');
+      expect(normalizeWebUiBasePath('//example.test/aion')).toBe('');
+      expect(normalizeWebUiBasePath('/aion?unsafe=1')).toBe('');
+      expect(normalizeWebUiBasePath('/aion#unsafe')).toBe('');
     });
   });
 
@@ -387,6 +402,22 @@ describe('httpBridge', () => {
       vi.clearAllTimers();
       unsubscribe();
       vi.useRealTimers();
+    });
+
+    it('keeps WebUI websocket calls inside the configured base path', () => {
+      vi.stubGlobal('window', {
+        __aionuiWebBasePath: '/integrations/aion/',
+        location: { protocol: 'https:', host: 'workspace.example.test' },
+      });
+      vi.stubGlobal('document', {});
+      vi.stubGlobal('WebSocket', FakeWebSocket as unknown as typeof WebSocket);
+      vi.spyOn(console, 'debug').mockImplementation(() => {});
+      FakeWebSocket.instances = [];
+
+      const unsubscribe = wsEmitter('test-event').on(() => {});
+
+      expect(FakeWebSocket.instances[0]?.url).toBe('wss://workspace.example.test/integrations/aion/ws');
+      unsubscribe();
     });
 
     it('on returns unsubscribe function that removes listener', () => {

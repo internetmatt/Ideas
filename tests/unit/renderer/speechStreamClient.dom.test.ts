@@ -111,15 +111,26 @@ const setBackendPort = (port: number | undefined): void => {
   }
 };
 
+const setWebUiBasePath = (basePath: string | undefined): void => {
+  const w = window as Window & { __aionuiWebBasePath?: string };
+  if (basePath === undefined) {
+    delete w.__aionuiWebBasePath;
+  } else {
+    w.__aionuiWebBasePath = basePath;
+  }
+};
+
 beforeEach(() => {
   vi.useFakeTimers();
   MockWebSocket.instances = [];
   setBackendPort(undefined);
+  setWebUiBasePath(undefined);
 });
 
 afterEach(() => {
   vi.useRealTimers();
   setBackendPort(undefined);
+  setWebUiBasePath(undefined);
   vi.restoreAllMocks();
 });
 
@@ -446,6 +457,14 @@ describe('URL derivation', () => {
     const sock = lastSocket();
     // jsdom serves over http://localhost:3000 — expect ws same-origin.
     expect(sock.url).toBe(`ws://${window.location.host}/api/stt/stream`);
+  });
+
+  it('WebUI browser mode: applies the configured base path', () => {
+    setWebUiBasePath('/integrations/aion/');
+
+    startSpeechStream({ callbacks: makeCallbacks(), createSocket });
+
+    expect(lastSocket().url).toBe(`ws://${window.location.host}/integrations/aion/api/stt/stream`);
   });
 
   it('Electron mode (__backendPort injected): ws://127.0.0.1:<port>/api/stt/stream', () => {

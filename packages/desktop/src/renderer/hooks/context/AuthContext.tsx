@@ -1,4 +1,5 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
+import { resolveWebUiPath } from '@/common/adapter/webUiBasePath';
 // M6: CSRF removed with legacy webserver — stub functions for compatibility, re-implement in M7
 const withCsrfToken = <T extends Record<string, unknown>>(data: T): T => data;
 const hasValidCsrfToken = (): boolean => true;
@@ -45,7 +46,7 @@ interface AuthContextValue {
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
 
-const AUTH_USER_ENDPOINT = '/api/auth/user';
+const AUTH_USER_ENDPOINT = resolveWebUiPath('/api/auth/user');
 
 const isDesktopRuntime = typeof window !== 'undefined' && Boolean(window.electronAPI);
 
@@ -157,7 +158,7 @@ export const AuthProvider: React.FC<React.PropsWithChildren> = ({ children }) =>
 
       // P1 安全修复：登录请求需要 CSRF Token / P1 Security fix: Login needs CSRF token
       // Backend route is /login; web-host's static-server explicitly proxies it.
-      const response = await fetch('/login', {
+      const response = await fetch(resolveWebUiPath('/login'), {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -251,7 +252,7 @@ export const AuthProvider: React.FC<React.PropsWithChildren> = ({ children }) =>
     }
 
     try {
-      await fetch('/logout', {
+      await fetch(resolveWebUiPath('/logout'), {
         method: 'POST',
         // Logout also needs CSRF token / 登出同样需要 CSRF Token
         headers: {

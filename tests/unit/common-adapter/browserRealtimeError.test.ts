@@ -25,6 +25,10 @@ type BrowserLocation = {
   hash: string;
 };
 
+type BrowserWindow = Window & {
+  __aionuiWebBasePath?: string;
+};
+
 type FakeSocketEventMap = {
   open: () => void;
   message: (event: MessageEvent<string>) => void;
@@ -95,7 +99,7 @@ class FakeWebSocket {
   }
 }
 
-function setupBrowserGlobals() {
+function setupBrowserGlobals(basePath?: string) {
   const location: BrowserLocation = {
     protocol: 'http:',
     hostname: '127.0.0.1',
@@ -104,22 +108,24 @@ function setupBrowserGlobals() {
     hash: '',
   };
 
-  vi.stubGlobal('window', {
+  const browserWindow = {
     location,
     setTimeout: setTimeout as unknown as Window['setTimeout'],
     clearTimeout: clearTimeout as unknown as Window['clearTimeout'],
-  });
+  } as unknown as BrowserWindow;
+  if (basePath) browserWindow.__aionuiWebBasePath = basePath;
+  vi.stubGlobal('window', browserWindow);
   vi.stubGlobal('WebSocket', FakeWebSocket as unknown as typeof WebSocket);
 
   return location;
 }
 
-async function loadBrowserAdapter() {
+async function loadBrowserAdapter(basePath?: string) {
   vi.resetModules();
   FakeWebSocket.instances = [];
   platformMock.adapter.mockClear();
 
-  const location = setupBrowserGlobals();
+  const location = setupBrowserGlobals(basePath);
 
   await import('@/common/adapter/browser');
 
@@ -144,6 +150,12 @@ describe('browser WebSocket realtime error handling', () => {
     vi.useRealTimers();
     vi.restoreAllMocks();
     vi.unstubAllGlobals();
+  });
+
+  it('uses the configured WebUI base path for the realtime socket', async () => {
+    const { socket } = await loadBrowserAdapter('/integrations/aion/');
+
+    expect(socket.url).toBe('ws://127.0.0.1:13400/integrations/aion/ws');
   });
 
   it.each([

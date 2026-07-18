@@ -6,6 +6,10 @@
  * so existing renderer code works without changes.
  */
 
+import { getWebUiBasePath } from './webUiBasePath';
+
+export { normalizeWebUiBasePath } from './webUiBasePath';
+
 // ---------------------------------------------------------------------------
 // Base URL
 // ---------------------------------------------------------------------------
@@ -51,9 +55,9 @@ function isWebUiBrowserMode(): boolean {
 
 export function getBaseUrl(): string {
   if (isWebUiBrowserMode()) {
-    // Same-origin: calls like fetch(`${baseUrl}/api/foo`) resolve to `/api/foo`
-    // on whatever host the page was served from.
-    return '';
+    // Same-origin: an optional base path keeps AionUi's API namespace inside
+    // the reverse-proxy mount instead of claiming the host application's /api.
+    return getWebUiBasePath();
   }
   return `http://127.0.0.1:${getBackendPort()}`;
 }
@@ -61,7 +65,7 @@ export function getBaseUrl(): string {
 function getWsUrl(): string {
   if (isWebUiBrowserMode()) {
     const proto = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-    return `${proto}//${window.location.host}/ws`;
+    return `${proto}//${window.location.host}${getWebUiBasePath()}/ws`;
   }
   return `ws://127.0.0.1:${getBackendPort()}/ws`;
 }

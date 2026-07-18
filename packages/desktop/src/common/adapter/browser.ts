@@ -7,6 +7,7 @@
 import { bridge } from '@/common/platform/bridge';
 import { WEBUI_DEFAULT_PORT } from '@/common/config/constants';
 import type { ElectronBridgeAPI } from '@/common/types/platform/electron';
+import { getWebUiBasePath } from './webUiBasePath';
 
 interface CustomWindow extends Window {
   electronAPI?: ElectronBridgeAPI;
@@ -72,10 +73,11 @@ if (win.electronAPI) {
 } else {
   // Web 环境 - 使用 WebSocket 通信，并在登录后自动补上已获取 Cookie 的连接
   // Web runtime bridge: ensure the socket reconnects after login so session cookie can be sent.
-  // Path must be `/ws` — web-host's static-server only proxies WebSocket upgrades under /ws.
+  // The default path remains `/ws`; embedded WebUI builds can prefix it with
+  // the same generic base path used by the HTTP bridge.
   const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
   const defaultHost = `${window.location.hostname}:${WEBUI_DEFAULT_PORT}`;
-  const socketUrl = `${protocol}//${window.location.host || defaultHost}/ws`;
+  const socketUrl = `${protocol}//${window.location.host || defaultHost}${getWebUiBasePath()}/ws`;
 
   type QueuedMessage = { name: string; data: unknown };
 

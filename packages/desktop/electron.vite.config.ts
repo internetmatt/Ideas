@@ -303,6 +303,9 @@ export default defineConfig(({ mode }) => {
         // can show it without importing packages/desktop/package.json, which is
         // a workspace-internal placeholder frozen at "0.0.0".
         __APP_VERSION__: JSON.stringify(rootPackageJson.version),
+        // Optional same-origin reverse-proxy mount for the standalone WebUI.
+        // Empty preserves AionUi's existing root behavior exactly.
+        __AIONUI_WEB_BASE_PATH__: JSON.stringify(process.env.AIONUI_WEB_BASE_PATH ?? ''),
         global: 'globalThis',
       },
       optimizeDeps: {
