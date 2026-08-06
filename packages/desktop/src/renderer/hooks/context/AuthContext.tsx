@@ -102,6 +102,17 @@ async function fetchCurrentUser(signal?: AbortSignal): Promise<AuthUser | null> 
   return null;
 }
 
+/** Projecto shell inject — preferred identity when embedded under :4715. */
+function userFromProjectoIntegrations(): AuthUser | null {
+  if (typeof window === 'undefined') return null;
+  const identity = window.__PROJECTO_INTEGRATIONS__?.identity;
+  if (!identity?.sub && !identity?.email) return null;
+  return {
+    id: String(identity.sub || identity.email),
+    username: String(identity.email || identity.sub),
+  };
+}
+
 export const AuthProvider: React.FC<React.PropsWithChildren> = ({ children }) => {
   const [user, setUser] = useState<AuthUser | null>(null);
   const [status, setStatus] = useState<AuthStatus>('checking');
@@ -109,6 +120,15 @@ export const AuthProvider: React.FC<React.PropsWithChildren> = ({ children }) =>
   const abortRef = useRef<AbortController | null>(null);
 
   const refresh = useCallback(async () => {
+    // Projecto-owned panel: trust injected JWT identity before AionUI local login.
+    const projectoUser = userFromProjectoIntegrations();
+    if (projectoUser && window.__PROJECTO_INTEGRATIONS__?.whitelabel === 'projecto') {
+      setUser(projectoUser);
+      setStatus('authenticated');
+      setReady(true);
+      return;
+    }
+
     if (isDesktopRuntime) {
       setStatus('authenticated');
       setUser(null);
@@ -141,6 +161,19 @@ export const AuthProvider: React.FC<React.PropsWithChildren> = ({ children }) =>
 
   const login = useCallback(async ({ username, password, remember }: LoginParams): Promise<LoginResult> => {
     try {
+      // Under Projecto shell, local AionUI passwords are not the IdP — bounce to Projecto login.
+      if (window.__PROJECTO_INTEGRATIONS__?.whitelabel === 'projecto') {
+        const returnTo = window.location.href;
+        const loginBase =
+          (window.__PROJECTO_INTEGRATIONS__ as { projectoLoginUrl?: string })?.projectoLoginUrl ||
+          'http://projecto.localhost/apps/projecto-web/';
+        const url = new URL(loginBase);
+        url.searchParams.set('login', '1');
+        url.searchParams.set('return', returnTo);
+        window.location.href = url.toString();
+        return { success: false, message: 'Redirecting to Projecto login…', code: 'unknown' };
+      }
+
       if (isDesktopRuntime) {
         setReady(true);
         return { success: true };

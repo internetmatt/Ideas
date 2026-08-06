@@ -6,6 +6,7 @@
 
 import type { Theme } from '@/common/theme/types';
 import { LIGHT_THEME_ID, DARK_THEME_ID } from '@/common/theme/constants';
+import { applyWhitelabelAllowlist, getWhitelabelProfile } from '@renderer/services/whitelabel';
 
 import {
   defaultThemeCover,
@@ -37,7 +38,7 @@ const decorative = (id: string, name: string, appearance: Theme['appearance'], c
   updated_at: T0,
 });
 
-export const BUILTIN_THEMES: Theme[] = [
+const ALL_BUILTIN_THEMES: Theme[] = [
   {
     id: LIGHT_THEME_ID,
     name: 'Light',
@@ -62,5 +63,16 @@ export const BUILTIN_THEMES: Theme[] = [
   decorative('discourse-horizon', 'Discourse Horizon', 'light', discourseHorizonCss),
   decorative('glittering-input-field', 'Glittering Input Field', 'light', glitteringInputFieldCss),
 ];
+
+/**
+ * Filtered at the source so a removed theme is gone from resolution and
+ * persistence too, not merely hidden in the picker — a branded build must not
+ * re-apply a novelty theme a user selected before the profile was applied.
+ */
+export const BUILTIN_THEMES: Theme[] = applyWhitelabelAllowlist(
+  ALL_BUILTIN_THEMES,
+  getWhitelabelProfile().themes,
+  (theme) => theme.id
+);
 
 export const BUILTIN_THEME_IDS = new Set(BUILTIN_THEMES.map((t) => t.id));

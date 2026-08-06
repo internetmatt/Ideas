@@ -23,6 +23,7 @@ import LarkConfigForm from './LarkConfigForm';
 import TelegramConfigForm from './TelegramConfigForm';
 import WeixinConfigForm from './WeixinConfigForm';
 import WecomConfigForm from './WecomConfigForm';
+import { applyWhitelabelAllowlist, getWhitelabelProfile } from '@renderer/services/whitelabel';
 
 type ChannelSettingsPlatform = 'telegram' | 'lark' | 'dingtalk' | 'weixin' | 'wecom';
 
@@ -779,7 +780,7 @@ const ChannelModalContent: React.FC = () => {
       },
     ].filter((channel) => !extensionTypeSet.has(String(channel.id).toLowerCase()));
 
-    return [
+    const allChannels: ChannelConfig[] = [
       telegramChannel,
       larkChannel,
       dingtalkChannel,
@@ -788,6 +789,9 @@ const ChannelModalContent: React.FC = () => {
       ...extensionChannels,
       ...comingSoonChannels,
     ];
+
+    // Narrowed for branded builds — see @renderer/services/whitelabel.
+    return applyWhitelabelAllowlist(allChannels, getWhitelabelProfile().channels, (channel) => String(channel.id));
   }, [
     pluginStatus,
     larkPluginStatus,

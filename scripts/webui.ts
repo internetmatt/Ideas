@@ -17,6 +17,25 @@
  *   AIONUI_BACKEND_BIN    : absolute path to aioncore binary (else PATH lookup)
  *   AIONUI_BACKEND_BUNDLED_DIR : dir containing bundled-aioncore/<plat-arch>/binary
  *   AIONUI_OPEN_BROWSER   : "1"/"true" to force open, "0"/"false" to disable
+ *   AIONUI_MANAGED_RESOURCES_MODE : "bundled"/"download", passed through to aioncore.
+ *                           Auto-set to "bundled" when a bundled binary ships its
+ *                           own managed-resources/ dir (skips the nodejs.org fetch).
+ *   AIONUI_PRODUCT_NAME    : local stand-in for the Projecto proxy's injected
+ *                           window.__PROJECTO_INTEGRATIONS__.productName. Rewrites
+ *                           the served index.html on the fly (see web-host's
+ *                           static-server.ts) so the login title reflects it even
+ *                           when hitting this standalone webui directly, without a
+ *                           Projecto backend in front. Requires the renderer bundle
+ *                           to actually contain resolveBrandProductName() — rebuild
+ *                           with `bun run package` (or drop --no-build) if the H1
+ *                           still reads "AionUi" after setting this.
+ *   AIONUI_WHITELABEL      : local stand-in for window.__PROJECTO_INTEGRATIONS__.whitelabel
+ *                           (theme/channel allowlist profile id, e.g. "projecto").
+ *   AIONUI_BACKEND_PORT_TIMEOUT_MS : ms to wait for aioncore's AIONCORE_LISTENING
+ *                           stdout line before giving up (default 30000). Raise this
+ *                           on a host under heavy disk contention (e.g. Time Machine
+ *                           mid-backup) where even trivial process startup can take
+ *                           tens of seconds — see packages/web-host/src/backend-launcher.ts.
  */
 
 import { execSync } from 'child_process';
@@ -142,7 +161,20 @@ function resolveBackendBinary(): string {
   const bundledBase = process.env.AIONUI_BACKEND_BUNDLED_DIR ?? path.join(repoRoot, 'resources', 'bundled-aioncore');
   const runtimeKey = `${process.platform}-${process.arch}`;
   const bundled = path.join(bundledBase, runtimeKey, BACKEND_BINARY);
-  if (fs.existsSync(bundled)) return bundled;
+  if (fs.existsSync(bundled)) {
+    // A bundled binary ships with its own managed-resources/ (node runtime,
+    // ACP agent binaries, ...) right next to it. Without this, aioncore
+    // defaults to `--managed-resources-mode download` even here (buildSpawnArgs
+    // only adds `bundled` when isPackaged, which standalone webui never is)
+    // and tries to fetch a ~fresh Node runtime from nodejs.org on first run
+    // instead of using the multi-hundred-MB copy already on disk — slow, and
+    // a needless dependency on network access. See docs/guides/webui.md.
+    const managedResourcesDir = path.join(bundledBase, runtimeKey, 'managed-resources');
+    if (fs.existsSync(managedResourcesDir) && !process.env.AIONUI_MANAGED_RESOURCES_MODE) {
+      process.env.AIONUI_MANAGED_RESOURCES_MODE = 'bundled';
+    }
+    return bundled;
+  }
 
   try {
     const cmd = process.platform === 'win32' ? `where ${BACKEND_BINARY}` : `which ${BACKEND_BINARY}`;

@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { changeLanguage } from '@/renderer/services/i18n';
 import { useNavigate } from 'react-router-dom';
 import AppLoader from '@renderer/components/layout/AppLoader';
+import { resolveBrandProductName } from '@renderer/services/whitelabel';
 import { useAuth } from '../../hooks/context/AuthContext';
 import './LoginPage.css';
 
@@ -42,6 +43,10 @@ const LoginPage: React.FC = () => {
   const [passwordVisible, setPasswordVisible] = useState(false);
   const [message, setMessage] = useState<MessageState | null>(null);
   const [loading, setLoading] = useState(false);
+
+  // Projecto shell injects window.__PROJECTO_INTEGRATIONS__.productName before
+  // this renders; unbranded (raw AionUi) builds fall back to the i18n string.
+  const brandName = useMemo(() => resolveBrandProductName(t('login.brand')), [t]);
 
   const usernameRef = useRef<HTMLInputElement | null>(null);
   const passwordRef = useRef<HTMLInputElement | null>(null);
@@ -221,9 +226,9 @@ const LoginPage: React.FC = () => {
 
         <div className='login-page__header'>
           <div className='login-page__logo'>
-            <img src={loginLogo} alt={t('login.brand')} />
+            <img src={loginLogo} alt={brandName} />
           </div>
-          <h1 className='login-page__title'>{t('login.brand')}</h1>
+          <h1 className='login-page__title'>{brandName}</h1>
           <p className='login-page__subtitle'>{t('login.subtitle')}</p>
         </div>
 

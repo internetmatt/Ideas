@@ -198,7 +198,14 @@ export function buildSpawnArgs(config: SpawnConfig): string[] {
     '--app-version',
     config.appVersion,
   ];
-  if (config.isPackaged) args.push('--managed-resources-mode', 'bundled');
+  // Packaged (Electron) builds always ship managed-resources next to the
+  // binary. Standalone `bun run webui` isn't "packaged" but can still have a
+  // bundled managed-resources dir (see resolveBackendBinary in scripts/
+  // webui.ts) — $AIONUI_MANAGED_RESOURCES_MODE lets that caller opt in
+  // without us needing to overload the isPackaged flag's other meanings
+  // (e.g. default log level).
+  const managedResourcesMode = process.env.AIONUI_MANAGED_RESOURCES_MODE || (config.isPackaged ? 'bundled' : undefined);
+  if (managedResourcesMode) args.push('--managed-resources-mode', managedResourcesMode);
   if (!config.isPackaged && process.env.AIONUI_DUMP_PROMPTS === '1') args.push('--dump-prompts');
   if (config.logDir) args.push('--log-dir', config.logDir);
   if (config.workDir) args.push('--work-dir', config.workDir);
@@ -231,7 +238,27 @@ const FETCH_FORBIDDEN_PORTS = new Set([
 
 const FETCH_COMPATIBLE_PORT_MAX_ATTEMPTS = 50;
 const AIONCORE_LISTENING_PREFIX = 'AIONCORE_LISTENING ';
-const BACKEND_PORT_REPORT_TIMEOUT_MS = 30_000;
+const DEFAULT_BACKEND_PORT_REPORT_TIMEOUT_MS = 30_000;
+
+/**
+ * How long to wait for aioncore to print `AIONCORE_LISTENING` on stdout
+ * before giving up and killing it. 30s is normally plenty (process spawn +
+ * socket bind is typically <100ms), but on a host under heavy filesystem
+ * contention (e.g. a Time Machine "FindingChanges" pass, a stuck network
+ * mount, antivirus scanning) even trivial process startup can take tens of
+ * seconds — the exec()/mmap of the binary itself gets stuck waiting for the
+ * OS scheduler/disk, before any of aioncore's own code has a chance to run.
+ * Overridable via $AIONUI_BACKEND_PORT_TIMEOUT_MS for exactly that case,
+ * without needing to patch this file.
+ */
+function getBackendPortReportTimeoutMs(): number {
+  const raw = process.env.AIONUI_BACKEND_PORT_TIMEOUT_MS;
+  if (raw && /^\d+$/.test(raw)) {
+    const parsed = Number(raw);
+    if (parsed > 0) return parsed;
+  }
+  return DEFAULT_BACKEND_PORT_REPORT_TIMEOUT_MS;
+}
 
 function isFetchForbiddenPort(port: number): boolean {
   return FETCH_FORBIDDEN_PORTS.has(port);
@@ -699,14 +726,15 @@ export class BackendLifecycleManager {
         reportedPortSettled = true;
         reject(error);
       };
+      const portReportTimeoutMs = getBackendPortReportTimeoutMs();
       reportedPortTimer = setTimeout(() => {
         rejectReportedPort(
           makeStartupError('listen_timeout', 'aioncore did not report its listening port before timeout', undefined, {
-            healthCheckTimeoutMs: BACKEND_PORT_REPORT_TIMEOUT_MS,
+            healthCheckTimeoutMs: portReportTimeoutMs,
             healthCheckElapsedMs: Date.now() - startupStartedAt,
           })
         );
-      }, BACKEND_PORT_REPORT_TIMEOUT_MS);
+      }, portReportTimeoutMs);
     });
 
     this.childProcess.stdout?.on('data', (data: Buffer) => {
