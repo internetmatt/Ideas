@@ -1,5 +1,7 @@
-import i18n from 'i18next';
+import i18n, { type PostProcessorModule } from 'i18next';
 import { initReactI18next } from 'react-i18next';
+
+import { resolveBrandProductName } from '@renderer/services/whitelabel';
 
 import { configService } from '@/common/config/configService';
 import { ipcBridge } from '@/common';
@@ -123,9 +125,34 @@ if (initialLanguage !== DEFAULT_LANGUAGE) {
 // and fall back to navigator.language, causing a language mismatch (Issue #1176).
 // Instead, we use localStorage and Electron's injected local config language
 // only as hints for the initial render, then let configService be the source of truth.
+/**
+ * Rewrites the upstream product name in translated strings to the configured
+ * brand. The name is baked into ~11 locale files in hundreds of places, so
+ * whitelabeling by editing translations is unmaintainable and drifts the
+ * moment upstream adds a string. One post-processor covers every language,
+ * including strings added later.
+ *
+ * A no-op unless a brand is actually configured, so upstream builds are
+ * untouched. "AionCore" is deliberately preserved — it names a shipped binary
+ * that appears in install/diagnostic messages, where accuracy beats branding.
+ */
+const brandPostProcessor: PostProcessorModule = {
+  type: 'postProcessor',
+  name: 'brand',
+  process(value: string): string {
+    const brand = resolveBrandProductName('AionUi');
+    if (brand === 'AionUi' || typeof value !== 'string') return value;
+    return value
+      .replace(/\bAion CLI\b/g, `${brand} CLI`)
+      .replace(/\bAionUi\b(?!\s*Core)/g, brand);
+  },
+};
+
 i18n
+  .use(brandPostProcessor)
   .use(initReactI18next)
   .init({
+    postProcess: ['brand'],
     resources: initialResources,
     lng: initialLanguage,
     fallbackLng: DEFAULT_LANGUAGE,
