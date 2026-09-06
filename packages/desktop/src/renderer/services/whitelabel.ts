@@ -66,6 +66,13 @@ export type WhitelabelProfile = {
    * upstream name is wrong for this build even though it is not "AionUi".
    */
   assistantAliases?: Readonly<Record<string, string>>;
+  /**
+   * Builtin skills to hide, by name. These ship inside aioncore, so a
+   * whitelabeled build cannot remove them from the backend — it can only
+   * decline to surface them. Used for skills that are wrong for this
+   * audience (e.g. non-English social-recruiting skills).
+   */
+  skillDenylist?: readonly string[];
 };
 
 /** Upstream AionUi, unfiltered. */
@@ -84,6 +91,9 @@ export const PROJECTO_PROFILE: WhitelabelProfile = {
   // Projecto ships a vendored gemini-cli fork as Pollux; surfacing the
   // upstream name would point users at a CLI this build does not run.
   assistantAliases: { 'Gemini CLI': 'Pollux CLI' },
+  // Chinese-language social-recruiting skills shipped by upstream; not
+  // applicable to this deployment and untranslated in the UI.
+  skillDenylist: ['xiaohongshu-recruiter', 'x-recruiter', 'weixin-file-send'],
 };
 
 export const WHITELABEL_PROFILES: Readonly<Record<string, WhitelabelProfile>> = {
@@ -213,6 +223,10 @@ export const brandDataString = (value: string | null | undefined): string => {
   // Exact-match aliases run last so they see the already-rebranded string.
   return alias(rebranded);
 };
+
+/** Whether a builtin skill should be surfaced under the active profile. */
+export const isSkillVisible = (skillName: string): boolean =>
+  !getWhitelabelProfile().skillDenylist?.includes(skillName);
 
 /** True when nothing is rebranded — lets callers skip work entirely. */
 export const isUpstreamBrand = (b: BrandNames): boolean =>

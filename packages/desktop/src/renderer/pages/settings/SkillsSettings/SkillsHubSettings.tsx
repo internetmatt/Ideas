@@ -13,6 +13,7 @@ import SettingsPageHeader from '../components/SettingsPageHeader';
 import TalkToButlerButton from '@/renderer/components/base/TalkToButlerButton';
 import { AionSearchInput } from '@/renderer/components/base';
 import { buildSkillImportNotice, getSkillImportErrorMessage } from './skillImportMessages';
+import { brandDataString, isSkillVisible } from '@renderer/services/whitelabel';
 
 // Skill 信息类型 / Skill info type
 interface SkillInfo {
@@ -141,7 +142,25 @@ const SkillsHubSettings: React.FC<SkillsHubSettingsProps> = ({ withWrapper = tru
   const [highlightedSkill, setHighlightedSkill] = useState<string | null>(null);
   const skillRefs = useRef<Record<string, HTMLDivElement | null>>({});
   const [loading, setLoading] = useState(false);
-  const [availableSkills, setAvailableSkills] = useState<SkillInfo[]>([]);
+  const [rawSkills, setRawSkills] = useState<SkillInfo[]>([]);
+
+  /**
+   * Skills ship inside aioncore, so a whitelabeled build cannot remove or
+   * reword them at the source — it filters and rebrands them here.
+   * `skillDenylist` drops ones that do not apply to this deployment;
+   * brandDataString rewrites upstream product names in the copy, which is
+   * backend data and never passes through i18n.
+   */
+  const availableSkills = useMemo(
+    () =>
+      rawSkills
+        .filter((skill) => isSkillVisible(skill.name))
+        .map((skill) => ({
+          ...skill,
+          description: skill.description ? brandDataString(skill.description) : skill.description,
+        })),
+    [rawSkills]
+  );
   const [search_query, setSearchQuery] = useState('');
   const [importHistory, setImportHistory] = useState<SkillImportRecord[]>([]);
   const [importLimits, setImportLimits] = useState<SkillImportLimits | null>(null);
@@ -193,7 +212,7 @@ const SkillsHubSettings: React.FC<SkillsHubSettingsProps> = ({ withWrapper = tru
     setLoading(true);
     try {
       const skills = await ipcBridge.fs.listAvailableSkills.invoke();
-      setAvailableSkills(skills);
+      setRawSkills(skills);
 
       const history = await ipcBridge.fs.listSkillImportHistory.invoke();
       setImportHistory(history as SkillImportRecord[]);

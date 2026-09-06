@@ -106,3 +106,22 @@ describe('assistant aliases', () => {
     expect(AIONUI_PROFILE.assistantAliases).toBeUndefined();
   });
 });
+
+describe('skill denylist', () => {
+  it('hides upstream skills that do not apply to this deployment', () => {
+    // These ship inside aioncore, so a branded build cannot delete them at
+    // the source — it declines to surface them.
+    for (const name of ['xiaohongshu-recruiter', 'x-recruiter', 'weixin-file-send']) {
+      expect(PROJECTO_PROFILE.skillDenylist).toContain(name);
+    }
+  });
+
+  it('keeps every other skill visible', () => {
+    expect(PROJECTO_PROFILE.skillDenylist).not.toContain('aionui-config');
+    expect(PROJECTO_PROFILE.skillDenylist).not.toContain('pdf');
+  });
+
+  it('upstream profile hides nothing', () => {
+    expect(AIONUI_PROFILE.skillDenylist).toBeUndefined();
+  });
+});
