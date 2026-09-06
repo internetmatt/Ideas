@@ -1,40 +1,69 @@
-import { describe, expect, it, vi, beforeEach } from 'vitest';
-import { resetWhitelabelProfileCache } from '@/renderer/services/whitelabel';
+import { describe, expect, it } from 'vitest';
+import { UPSTREAM_BRAND, type BrandNames } from '@/renderer/services/whitelabel';
 
 /**
- * The post-processor is the whole whitelabel story for translated strings —
- * the product name is baked into ~11 locale files, so nothing else scales.
- * These lock its two non-obvious rules: it is inert without a brand, and it
- * preserves the AionCore binary name.
+ * Mirrors the post-processor in services/i18n/index.ts. Order matters:
+ * "Aion CLI" and "AionCore" must be replaced before the bare "AionUi",
+ * otherwise a shorter match could claim part of a longer token.
  */
-const process = (value: string, brand: string): string => {
-  if (brand === 'AionUi' || typeof value !== 'string') return value;
-  return value.replace(/\bAion CLI\b/g, `${brand} CLI`).replace(/\bAionUi\b(?!\s*Core)/g, brand);
+const process = (value: string, brand: BrandNames): string => {
+  if (
+    brand.product === UPSTREAM_BRAND.product &&
+    brand.cli === UPSTREAM_BRAND.cli &&
+    brand.core === UPSTREAM_BRAND.core
+  ) {
+    return value;
+  }
+  return value
+    .replace(new RegExp(`\\b${UPSTREAM_BRAND.cli}\\b`, 'g'), brand.cli)
+    .replace(new RegExp(`\\b${UPSTREAM_BRAND.core}\\b`, 'g'), brand.core)
+    .replace(new RegExp(`\\b${UPSTREAM_BRAND.product}\\b`, 'g'), brand.product);
 };
 
-describe('brand post-processor', () => {
-  beforeEach(() => resetWhitelabelProfileCache());
+const IDEAS: BrandNames = { product: 'Ideas', cli: 'OpenIdea CLI', core: 'ideacore' };
 
-  it('rebrands the product name and the CLI label', () => {
-    expect(process('Show AionUi', 'Ideas')).toBe('Show Ideas');
-    expect(process('Please select a model for Aion CLI', 'Ideas')).toBe('Please select a model for Ideas CLI');
-    expect(process('AionUi Butler', 'Ideas')).toBe('Ideas Butler');
+describe('brand post-processor — three tokens', () => {
+  it('rebrands the product, the CLI and the core binary', () => {
+    expect(process('Show AionUi', IDEAS)).toBe('Show Ideas');
+    expect(process('Please select a model for Aion CLI', IDEAS)).toBe('Please select a model for OpenIdea CLI');
+    expect(process('the local AionCore backend cannot run', IDEAS)).toBe('the local ideacore backend cannot run');
+  });
+
+  it('does not let the product token eat the CLI or core tokens', () => {
+    // "Aion CLI"/"AionCore" are replaced first; a naive product-first pass
+    // would leave "Ideas CLI"/"IdeasCore" style corruption behind.
+    expect(process('AionCore and Aion CLI and AionUi', IDEAS)).toBe('ideacore and OpenIdea CLI and Ideas');
   });
 
   it('rewrites every occurrence in one string', () => {
-    expect(process('AionUi opened, but reinstalling AionUi may not fix this.', 'Ideas')).toBe(
+    expect(process('AionUi opened, but reinstalling AionUi may not fix this.', IDEAS)).toBe(
       'Ideas opened, but reinstalling Ideas may not fix this.'
     );
   });
 
-  it('is inert when no brand is configured', () => {
-    const s = 'Show AionUi and Aion CLI';
-    expect(process(s, 'AionUi')).toBe(s);
+  it('is inert when nothing is rebranded', () => {
+    const s = 'Show AionUi and Aion CLI and AionCore';
+    expect(process(s, UPSTREAM_BRAND)).toBe(s);
   });
 
-  it('preserves AionCore — it names a shipped binary, not the product', () => {
-    // Support messages tell people to check whether AionCore was quarantined;
-    // rebranding that would send them looking for a file that does not exist.
-    expect(process('the local AionCore backend cannot run', 'Ideas')).toBe('the local AionCore backend cannot run');
+  it('keeps diagnostic copy pointing at the binary that actually ships', () => {
+    // A whitelabeled build ships its core under the branded name, so telling
+    // people to check for "AionCore" would name a file that is not on disk.
+    expect(process('check whether antivirus quarantined AionCore', IDEAS)).toBe(
+      'check whether antivirus quarantined ideacore'
+    );
+  });
+});
+
+describe('brandDataString — backend-supplied names', () => {
+  it('rebrands the generated CLI assistant name from aioncore', () => {
+    // aioncore persists this as data; i18n never sees it, which is why it
+    // survived in an otherwise fully branded UI.
+    expect(process('Aion CLI', IDEAS)).toBe('OpenIdea CLI');
+  });
+
+  it('leaves unrelated assistant names untouched', () => {
+    expect(process('Claude Code', IDEAS)).toBe('Claude Code');
+    expect(process('Codex CLI', IDEAS)).toBe('Codex CLI');
   });
 });

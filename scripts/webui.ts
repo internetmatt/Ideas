@@ -29,6 +29,13 @@
  *                           to actually contain resolveBrandProductName() — rebuild
  *                           with `bun run package` (or drop --no-build) if the H1
  *                           still reads "AionUi" after setting this.
+ *   AIONUI_CLI_NAME        : local stand-in for window.__PROJECTO_INTEGRATIONS__.cliName —
+ *                           the command-line product name (upstream "Aion CLI").
+ *                           Defaults to `${AIONUI_PRODUCT_NAME} CLI` when unset.
+ *   AIONUI_CORE_NAME       : local stand-in for window.__PROJECTO_INTEGRATIONS__.coreName —
+ *                           the shipped core binary (upstream "AionCore"). Set this
+ *                           to whatever the binary is actually named in a branded
+ *                           build, since install/diagnostic copy names it.
  *   AIONUI_WHITELABEL      : local stand-in for window.__PROJECTO_INTEGRATIONS__.whitelabel
  *                           (theme/channel allowlist profile id, e.g. "projecto").
  *   AIONUI_BACKEND_PORT_TIMEOUT_MS : ms to wait for aioncore's AIONCORE_LISTENING

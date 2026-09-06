@@ -94,3 +94,15 @@ describe('unknown profile ids are loud', () => {
     warn.mockRestore();
   });
 });
+
+describe('assistant aliases', () => {
+  it('renames vendored third-party CLIs on the projecto profile', () => {
+    // Projecto ships gemini-cli as the Pollux fork; showing the upstream name
+    // would point users at a CLI this build does not actually run.
+    expect(PROJECTO_PROFILE.assistantAliases?.['Gemini CLI']).toBe('Pollux CLI');
+  });
+
+  it('upstream profile declares no aliases', () => {
+    expect(AIONUI_PROFILE.assistantAliases).toBeUndefined();
+  });
+});

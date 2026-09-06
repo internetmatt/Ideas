@@ -13,6 +13,7 @@ import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from 're
 import { resolveAssistantAvatar } from '@/renderer/utils/model/assistantAvatar';
 import { selectableAssistants } from '@/renderer/utils/model/assistantSelection';
 import { useTranslation } from 'react-i18next';
+import { brandDataString } from '@renderer/services/whitelabel';
 
 export function resolveAssistantVisibleLimit(width: number): number {
   if (width >= 720) return 4;
@@ -115,7 +116,7 @@ const AssistantSelectionArea: React.FC<AssistantSelectionAreaProps> = ({
     const query = search.trim().toLowerCase();
     if (!query) return overflowAssistants;
     return overflowAssistants.filter((assistant) => {
-      const label = assistant.name_i18n?.[localeKey] || assistant.name;
+      const label = brandDataString(assistant.name_i18n?.[localeKey] || assistant.name);
       return label.toLowerCase().includes(query);
     });
   }, [localeKey, overflowAssistants, search]);
@@ -125,7 +126,7 @@ const AssistantSelectionArea: React.FC<AssistantSelectionAreaProps> = ({
   const renderAssistantPill = (assistant: Assistant, testId: string) => {
     const avatar = resolveAssistantAvatar(assistant.avatar);
     const isSelected = selectedId === assistant.id;
-    const label = assistant.name_i18n?.[localeKey] || assistant.name;
+    const label = brandDataString(assistant.name_i18n?.[localeKey] || assistant.name);
 
     return (
       <Button

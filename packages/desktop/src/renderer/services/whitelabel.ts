@@ -24,6 +24,10 @@ declare global {
       whitelabel?: string;
       /** Visible product name (e.g. "OfficeCLI AI"). */
       productName?: string;
+      /** CLI product name — defaults to `${productName} CLI` when absent. */
+      cliName?: string;
+      /** Core binary name — the shipped executable, e.g. "ideacore". */
+      coreName?: string;
       /** document.title already rewritten by Projecto inject; kept for JS readers. */
       documentTitle?: string;
       /** Phase 4 — Projecto skills registry (read-only). */
@@ -55,6 +59,13 @@ export type WhitelabelProfile = {
   channels?: readonly string[];
   /** Phase 3 — hide third-party provider configuration UI when true. */
   hideProviderConfig?: boolean;
+  /**
+   * Renames for backend-supplied assistant names, applied at display time.
+   * Distinct from the brand tokens: these are third-party CLIs the host ships
+   * under its own fork name (Projecto vendors gemini-cli as Pollux), so the
+   * upstream name is wrong for this build even though it is not "AionUi".
+   */
+  assistantAliases?: Readonly<Record<string, string>>;
 };
 
 /** Upstream AionUi, unfiltered. */
@@ -70,6 +81,9 @@ export const PROJECTO_PROFILE: WhitelabelProfile = {
   themes: [LIGHT_THEME_ID, DARK_THEME_ID, SYSTEM_THEME_ID, 'discourse-horizon', 'glittering-input-field'],
   channels: [],
   hideProviderConfig: true,
+  // Projecto ships a vendored gemini-cli fork as Pollux; surfacing the
+  // upstream name would point users at a CLI this build does not run.
+  assistantAliases: { 'Gemini CLI': 'Pollux CLI' },
 };
 
 export const WHITELABEL_PROFILES: Readonly<Record<string, WhitelabelProfile>> = {
@@ -136,3 +150,70 @@ export const resolveBrandProductName = (fallback: string): string => {
   const injected = window.__PROJECTO_INTEGRATIONS__?.productName?.trim();
   return injected || fallback;
 };
+
+/**
+ * The three brand tokens upstream ships, and what a whitelabeled build calls
+ * them. They are genuinely distinct products, not one name in three places:
+ *
+ *   product  the app / web UI            AionUi   -> e.g. "Ideas"
+ *   cli      the command-line product    Aion CLI -> e.g. "OpenIdea CLI"
+ *   core     the shipped core binary     AionCore -> e.g. "ideacore"
+ *
+ * `core` matters because it appears in install and diagnostic copy that tells
+ * people which executable to look for; a whitelabeled build ships a binary
+ * under its own name, so the message must match what is actually on disk.
+ */
+export interface BrandNames {
+  product: string;
+  cli: string;
+  core: string;
+}
+
+export const UPSTREAM_BRAND: BrandNames = {
+  product: 'AionUi',
+  cli: 'Aion CLI',
+  core: 'AionCore',
+};
+
+/** Resolved brand names; falls back to upstream for anything not injected. */
+export const resolveBrandNames = (): BrandNames => {
+  if (typeof window === 'undefined') return UPSTREAM_BRAND;
+  const injected = window.__PROJECTO_INTEGRATIONS__;
+  const product = injected?.productName?.trim() || UPSTREAM_BRAND.product;
+  return {
+    product,
+    // A host that rebrands the product but not the CLI still gets a coherent
+    // CLI name rather than the upstream one leaking through.
+    cli: injected?.cliName?.trim() || (product === UPSTREAM_BRAND.product ? UPSTREAM_BRAND.cli : `${product} CLI`),
+    core: injected?.coreName?.trim() || UPSTREAM_BRAND.core,
+  };
+};
+
+/**
+ * Rebrands upstream tokens inside DATA strings — names that arrive from the
+ * backend rather than from i18n, so the translation post-processor never sees
+ * them. The generated CLI assistant is the live case: aioncore persists it as
+ * `name: "Aion CLI"` (source "generated", preset_agent_type "aionrs"), and it
+ * rendered unbranded in an otherwise fully branded UI.
+ *
+ * Display-side only: the stored record keeps its upstream name, so nothing is
+ * migrated and un-whitelabeled builds are unaffected.
+ */
+export const brandDataString = (value: string | null | undefined): string => {
+  if (!value) return value ?? '';
+  const brand = resolveBrandNames();
+  // Aliases are profile-driven, so they apply even on an unbranded build —
+  // an early return on brand alone would silently skip them.
+  const alias = (v: string): string => getWhitelabelProfile().assistantAliases?.[v] ?? v;
+  if (isUpstreamBrand(brand)) return alias(value);
+  const rebranded = value
+    .replace(new RegExp(`\\b${UPSTREAM_BRAND.cli}\\b`, 'g'), brand.cli)
+    .replace(new RegExp(`\\b${UPSTREAM_BRAND.core}\\b`, 'g'), brand.core)
+    .replace(new RegExp(`\\b${UPSTREAM_BRAND.product}\\b`, 'g'), brand.product);
+  // Exact-match aliases run last so they see the already-rebranded string.
+  return alias(rebranded);
+};
+
+/** True when nothing is rebranded — lets callers skip work entirely. */
+export const isUpstreamBrand = (b: BrandNames): boolean =>
+  b.product === UPSTREAM_BRAND.product && b.cli === UPSTREAM_BRAND.cli && b.core === UPSTREAM_BRAND.core;

@@ -135,10 +135,17 @@ function peekWsRoute(buf: Buffer): boolean | null {
 function resolveDevIntegrationsOverride(): Record<string, unknown> | null {
   const productName = process.env.AIONUI_PRODUCT_NAME?.trim();
   const whitelabel = process.env.AIONUI_WHITELABEL?.trim();
-  if (!productName && !whitelabel) return null;
+  // The CLI and the core binary are separately brandable: they are distinct
+  // products, not the app name reused. AIONUI_CLI_NAME / AIONUI_CORE_NAME
+  // stand in for what the Projecto proxy injects.
+  const cliName = process.env.AIONUI_CLI_NAME?.trim();
+  const coreName = process.env.AIONUI_CORE_NAME?.trim();
+  if (!productName && !whitelabel && !cliName && !coreName) return null;
   const integrations: Record<string, unknown> = {};
   if (productName) integrations.productName = productName;
   if (whitelabel) integrations.whitelabel = whitelabel;
+  if (cliName) integrations.cliName = cliName;
+  if (coreName) integrations.coreName = coreName;
   return integrations;
 }
 
