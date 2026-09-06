@@ -71,3 +71,26 @@ describe('Projecto profile contents', () => {
     }
   });
 });
+
+describe('unknown profile ids are loud', () => {
+  it('warns when a configured id matches no profile', () => {
+    // Regression: AIONUI_WHITELABEL=ideas (the brand name) silently resolved to
+    // upstream AionUi, which also skipped the Projecto SSO branch. The fallback
+    // is still correct behaviour — it just may not be silent.
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    expect(resolveWhitelabelProfile('ideas')).toBe(AIONUI_PROFILE);
+    expect(warn).toHaveBeenCalledTimes(1);
+    expect(String(warn.mock.calls[0][0])).toContain('ideas');
+    warn.mockRestore();
+  });
+
+  it('stays quiet for known ids and for no id at all', () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    resolveWhitelabelProfile('projecto');
+    resolveWhitelabelProfile('aionui');
+    resolveWhitelabelProfile(undefined);
+    resolveWhitelabelProfile('');
+    expect(warn).not.toHaveBeenCalled();
+    warn.mockRestore();
+  });
+});

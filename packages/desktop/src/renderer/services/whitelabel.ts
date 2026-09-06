@@ -77,9 +77,24 @@ export const WHITELABEL_PROFILES: Readonly<Record<string, WhitelabelProfile>> = 
   [PROJECTO_PROFILE.id]: PROJECTO_PROFILE,
 };
 
-/** Unknown ids fall back to upstream rather than silently hiding surfaces. */
-export const resolveWhitelabelProfile = (id: string | undefined | null): WhitelabelProfile =>
-  (id && WHITELABEL_PROFILES[id]) || AIONUI_PROFILE;
+/**
+ * Unknown ids fall back to upstream rather than silently hiding surfaces — but
+ * they no longer do it quietly. A configured-but-unknown id is always a
+ * mistake: `AIONUI_WHITELABEL=ideas` (the brand name) instead of `projecto`
+ * (the profile id) degraded to unfiltered upstream AND skipped the Projecto
+ * SSO branch in AuthContext, with nothing anywhere saying so. Brand name is
+ * AIONUI_PRODUCT_NAME; this is the profile.
+ */
+export const resolveWhitelabelProfile = (id: string | undefined | null): WhitelabelProfile => {
+  if (id && !WHITELABEL_PROFILES[id]) {
+    console.warn(
+      `[whitelabel] unknown profile id "${id}" — falling back to "${AIONUI_PROFILE.id}". ` +
+        `Known ids: ${Object.keys(WHITELABEL_PROFILES).join(', ')}. ` +
+        `Set the brand name with AIONUI_PRODUCT_NAME, not the profile id.`
+    );
+  }
+  return (id && WHITELABEL_PROFILES[id]) || AIONUI_PROFILE;
+};
 
 /** Cast because the root tsconfig does not pull in `vite/client` types. */
 const buildTimeProfileId = (): string | undefined =>

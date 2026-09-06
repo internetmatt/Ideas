@@ -55,7 +55,7 @@ const FlowisePage: React.FC = () => {
       <header className='h-48px shrink-0 flex items-center justify-between gap-12px px-16px border-b border-[var(--color-border-2)]'>
         <div className='flex items-center gap-8px min-w-0'>
           <ShareOne theme='outline' size='18' fill='currentColor' />
-          <strong className='text-14px text-t-primary'>Flowise</strong>
+          <strong className='text-14px text-t-primary'>Canvas</strong>
           <Tag color={status === 'online' ? 'green' : status === 'offline' ? 'red' : 'gray'} size='small'>
             {status}
           </Tag>
@@ -73,7 +73,7 @@ const FlowisePage: React.FC = () => {
       <iframe
         key={frameKey}
         className='flex-1 min-h-0 w-full border-0 bg-bg-1'
-        title='Flowise visual flow canvas'
+        title='Visual flow canvas'
         src={flowiseUrl}
         allow='clipboard-read; clipboard-write; microphone; camera; autoplay; fullscreen'
       />

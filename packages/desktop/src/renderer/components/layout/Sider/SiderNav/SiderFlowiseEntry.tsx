@@ -20,7 +20,7 @@ const SiderFlowiseEntry: React.FC<Props> = ({
   siderTooltipProps,
   onClick,
 }) => (
-  <Tooltip {...siderTooltipProps} content='Flowise canvas' position='right'>
+  <Tooltip {...siderTooltipProps} content='Canvas' position='right'>
     <div
       className={classNames(
         'box-border group h-34px w-full flex items-center rd-8px cursor-pointer shrink-0 transition-all text-t-primary',
@@ -33,7 +33,7 @@ const SiderFlowiseEntry: React.FC<Props> = ({
       <span className='size-22px flex items-center justify-center shrink-0'>
         <ShareOne theme='outline' size={collapsed ? '20' : '16'} fill='currentColor' />
       </span>
-      {!collapsed && <span className='text-14px font-[500] leading-24px'>Flowise canvas</span>}
+      {!collapsed && <span className='text-14px font-[500] leading-24px'>Canvas</span>}
     </div>
   </Tooltip>
 );
