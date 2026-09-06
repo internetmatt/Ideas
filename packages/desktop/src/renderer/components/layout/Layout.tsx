@@ -24,6 +24,7 @@ import { cleanupSiderTooltips } from '@renderer/utils/ui/siderTooltip';
 import { useConversationShortcuts } from '@renderer/hooks/ui/useConversationShortcuts';
 import { isElectronDesktop } from '@renderer/utils/platform';
 import '@renderer/styles/layout.css';
+import { resolveBrandProductName } from '@renderer/services/whitelabel';
 
 const SidebarIcon: React.FC<{ size?: number; strokeWidth?: number }> = ({ size = 18, strokeWidth = 4 }) => (
   <svg
@@ -123,6 +124,9 @@ const Layout: React.FC<{
   }, [navigate]);
   const location = useLocation();
   const { t } = useTranslation();
+  // Wordmark follows the injected brand (AIONUI_PRODUCT_NAME) so a
+  // whitelabeled host does not show the upstream name in its chrome.
+  const brandName = resolveBrandProductName('AionUi');
   // The "AionUi" wordmark acts as Home / Back-to-Chat, but only from settings routes.
   // In non-settings routes the user is already "home", so it is a no-op (and not actionable).
   const isSettingsRoute = location.pathname.startsWith('/settings');
@@ -393,11 +397,11 @@ const Layout: React.FC<{
                         }
                       }}
                     >
-                      AionUi
+                      {brandName}
                     </div>
                   </Tooltip>
                 ) : (
-                  <div className='text-16px text-t-primary collapsed-hidden font-semibold'>AionUi</div>
+                  <div className='text-16px text-t-primary collapsed-hidden font-semibold'>{brandName}</div>
                 )}
                 {isMobile && !collapsed && (
                   <button

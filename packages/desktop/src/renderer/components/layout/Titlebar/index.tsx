@@ -16,6 +16,7 @@ import { useNavigationHistory } from '@/renderer/hooks/context/NavigationHistory
 import { useFeedback } from '@/renderer/hooks/context/FeedbackContext';
 import { isElectronDesktop, isMacOS } from '@/renderer/utils/platform';
 import './titlebar.css';
+import { resolveBrandProductName } from '@renderer/services/whitelabel';
 
 interface TitlebarProps {
   workspaceAvailable: boolean;
@@ -105,7 +106,7 @@ const SidebarIcon: React.FC<{ size?: number; strokeWidth?: number }> = ({ size =
 
 const Titlebar: React.FC<TitlebarProps> = ({ workspaceAvailable }) => {
   const { t } = useTranslation();
-  const appTitle = useMemo(() => 'AionUi', []);
+  const appTitle = useMemo(() => resolveBrandProductName('AionUi'), []);
   const [workspaceCollapsed, setWorkspaceCollapsed] = useState(true);
   const [mobileCenterTitle, setMobileCenterTitle] = useState(appTitle);
   const [mobileCenterOffset, setMobileCenterOffset] = useState(0);
