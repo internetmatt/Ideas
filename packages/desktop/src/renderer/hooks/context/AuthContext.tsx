@@ -120,9 +120,13 @@ export const AuthProvider: React.FC<React.PropsWithChildren> = ({ children }) =>
   const abortRef = useRef<AbortController | null>(null);
 
   const refresh = useCallback(async () => {
-    // Projecto-owned panel: trust injected JWT identity before AionUI local login.
+    // Host-owned panel (Projecto / Ideas): trust injected JWT before local login.
     const projectoUser = userFromProjectoIntegrations();
-    if (projectoUser && window.__PROJECTO_INTEGRATIONS__?.whitelabel === 'projecto') {
+    const hostWhitelabel = window.__PROJECTO_INTEGRATIONS__?.whitelabel;
+    if (
+      projectoUser &&
+      (hostWhitelabel === 'projecto' || hostWhitelabel === 'ideas')
+    ) {
       setUser(projectoUser);
       setStatus('authenticated');
       setReady(true);
@@ -161,8 +165,9 @@ export const AuthProvider: React.FC<React.PropsWithChildren> = ({ children }) =>
 
   const login = useCallback(async ({ username, password, remember }: LoginParams): Promise<LoginResult> => {
     try {
-      // Under Projecto shell, local AionUI passwords are not the IdP — bounce to Projecto login.
-      if (window.__PROJECTO_INTEGRATIONS__?.whitelabel === 'projecto') {
+      // Under a host shell, local passwords are not the IdP — bounce to host login.
+      const hostWhitelabel = window.__PROJECTO_INTEGRATIONS__?.whitelabel;
+      if (hostWhitelabel === 'projecto' || hostWhitelabel === 'ideas') {
         const returnTo = window.location.href;
         const loginBase =
           (window.__PROJECTO_INTEGRATIONS__ as { projectoLoginUrl?: string })?.projectoLoginUrl ||
@@ -171,7 +176,7 @@ export const AuthProvider: React.FC<React.PropsWithChildren> = ({ children }) =>
         url.searchParams.set('login', '1');
         url.searchParams.set('return', returnTo);
         window.location.href = url.toString();
-        return { success: false, message: 'Redirecting to Projecto login…', code: 'unknown' };
+        return { success: false, message: 'Redirecting to host login…', code: 'unknown' };
       }
 
       if (isDesktopRuntime) {

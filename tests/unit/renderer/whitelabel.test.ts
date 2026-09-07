@@ -1,10 +1,12 @@
 import {
   AIONUI_PROFILE,
+  IDEAS_PROFILE,
   PROJECTO_PROFILE,
   applyWhitelabelAllowlist,
+  isHostOwnedWhitelabel,
   resolveWhitelabelProfile,
 } from '@/renderer/services/whitelabel';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
 type Item = { id: string };
 
@@ -24,6 +26,14 @@ describe('whitelabel profile resolution', () => {
 
   it('resolves the Projecto profile by id', () => {
     expect(resolveWhitelabelProfile('projecto')).toBe(PROJECTO_PROFILE);
+  });
+
+  it('resolves the Ideas host profile by id', () => {
+    expect(resolveWhitelabelProfile('ideas')).toBe(IDEAS_PROFILE);
+    expect(IDEAS_PROFILE.channels).toEqual([]);
+    expect(isHostOwnedWhitelabel('ideas')).toBe(true);
+    expect(isHostOwnedWhitelabel('projecto')).toBe(true);
+    expect(isHostOwnedWhitelabel('aionui')).toBe(false);
   });
 });
 
@@ -74,19 +84,17 @@ describe('Projecto profile contents', () => {
 
 describe('unknown profile ids are loud', () => {
   it('warns when a configured id matches no profile', () => {
-    // Regression: AIONUI_WHITELABEL=ideas (the brand name) silently resolved to
-    // upstream AionUi, which also skipped the Projecto SSO branch. The fallback
-    // is still correct behaviour — it just may not be silent.
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
-    expect(resolveWhitelabelProfile('ideas')).toBe(AIONUI_PROFILE);
+    expect(resolveWhitelabelProfile('does-not-exist-either')).toBe(AIONUI_PROFILE);
     expect(warn).toHaveBeenCalledTimes(1);
-    expect(String(warn.mock.calls[0][0])).toContain('ideas');
+    expect(String(warn.mock.calls[0][0])).toContain('does-not-exist-either');
     warn.mockRestore();
   });
 
   it('stays quiet for known ids and for no id at all', () => {
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
     resolveWhitelabelProfile('projecto');
+    resolveWhitelabelProfile('ideas');
     resolveWhitelabelProfile('aionui');
     resolveWhitelabelProfile(undefined);
     resolveWhitelabelProfile('');

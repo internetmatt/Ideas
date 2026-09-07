@@ -96,18 +96,34 @@ export const PROJECTO_PROFILE: WhitelabelProfile = {
   skillDenylist: ['xiaohongshu-recruiter', 'x-recruiter', 'weixin-file-send'],
 };
 
+/**
+ * Ideas / work tenant panel. Same allowlist as Projecto (host owns messaging
+ * and IdP), but a distinct profile id so experience contracts can inject
+ * `whitelabel: "ideas"` without falling back to unfiltered upstream AionUi.
+ */
+export const IDEAS_PROFILE: WhitelabelProfile = {
+  ...PROJECTO_PROFILE,
+  id: 'ideas',
+};
+
 export const WHITELABEL_PROFILES: Readonly<Record<string, WhitelabelProfile>> = {
   [AIONUI_PROFILE.id]: AIONUI_PROFILE,
   [PROJECTO_PROFILE.id]: PROJECTO_PROFILE,
+  [IDEAS_PROFILE.id]: IDEAS_PROFILE,
 };
 
 /**
+ * Host-shell profiles that trust injected identity and bounce local login to
+ * the host IdP. Standalone Ideas (`AIONUI_PRODUCT_NAME=Ideas` with no profile)
+ * keeps the full upstream surface and local operator login.
+ */
+export const isHostOwnedWhitelabel = (id: string | undefined | null): boolean =>
+  id === PROJECTO_PROFILE.id || id === IDEAS_PROFILE.id;
+
+/**
  * Unknown ids fall back to upstream rather than silently hiding surfaces — but
- * they no longer do it quietly. A configured-but-unknown id is always a
- * mistake: `AIONUI_WHITELABEL=ideas` (the brand name) instead of `projecto`
- * (the profile id) degraded to unfiltered upstream AND skipped the Projecto
- * SSO branch in AuthContext, with nothing anywhere saying so. Brand name is
- * AIONUI_PRODUCT_NAME; this is the profile.
+ * they no longer do it quietly. Brand name is AIONUI_PRODUCT_NAME / productName;
+ * this is the profile id (`projecto`, `ideas`, `aionui`).
  */
 export const resolveWhitelabelProfile = (id: string | undefined | null): WhitelabelProfile => {
   if (id && !WHITELABEL_PROFILES[id]) {
