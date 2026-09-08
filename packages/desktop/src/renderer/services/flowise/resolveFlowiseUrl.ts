@@ -18,6 +18,9 @@ export type FlowiseIntegrations = {
   flowiseUrl?: string;
 };
 
+const buildTimeFlowiseUrl = (): string | undefined =>
+  (import.meta as ImportMeta & { env?: Record<string, string | undefined> }).env?.VITE_FLOWISE_URL;
+
 declare global {
   interface Window {
     __IDEAS_INTEGRATIONS__?: FlowiseIntegrations;
@@ -38,7 +41,7 @@ export function resolveFlowiseUrl(override?: string): string {
         window.localStorage.getItem('ideas.flowiseUrl') ||
         window.localStorage.getItem('aionui.flowiseUrl')
       : null) ||
-    (typeof import.meta !== 'undefined' ? import.meta.env?.VITE_FLOWISE_URL : undefined) ||
+    buildTimeFlowiseUrl() ||
     DEFAULT_FLOWISE_URL;
 
   try {
@@ -52,11 +55,7 @@ export function resolveFlowiseUrl(override?: string): string {
 /**
  * Build a Flowise iframe URL optionally scoped to a chatflow / conversation.
  */
-export function buildFlowiseEmbedUrl(options?: {
-  baseUrl?: string;
-  flowId?: string;
-  conversationId?: string;
-}): string {
+export function buildFlowiseEmbedUrl(options?: { baseUrl?: string; flowId?: string; conversationId?: string }): string {
   const base = resolveFlowiseUrl(options?.baseUrl);
   if (options?.flowId) {
     const path = `${base}/canvas/${encodeURIComponent(options.flowId)}`;

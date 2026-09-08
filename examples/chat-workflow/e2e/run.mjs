@@ -8,15 +8,7 @@
  */
 import { spawn } from 'node:child_process';
 import { createServer } from 'node:http';
-import {
-  createReadStream,
-  existsSync,
-  mkdirSync,
-  readFileSync,
-  rmSync,
-  statSync,
-  writeFileSync,
-} from 'node:fs';
+import { createReadStream, existsSync, mkdirSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { dirname, extname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { setTimeout as sleep } from 'node:timers/promises';
@@ -29,9 +21,7 @@ const ARTIFACT_DIR = '/opt/cursor/artifacts/chat-workflow-e2e';
 const UPDATE = process.env.UPDATE_SNAPSHOTS === '1';
 const CHROME =
   process.env.CHROME_PATH ||
-  ['/usr/bin/google-chrome', '/usr/bin/google-chrome-stable', '/usr/bin/chromium-browser'].find(
-    (p) => existsSync(p)
-  );
+  ['/usr/bin/google-chrome', '/usr/bin/google-chrome-stable', '/usr/bin/chromium-browser'].find((p) => existsSync(p));
 
 if (!CHROME) {
   console.error('Chrome not found. Set CHROME_PATH.');
@@ -153,9 +143,7 @@ async function evaluate(cdp, expression) {
   });
   if (result.exceptionDetails) {
     throw new Error(
-      result.exceptionDetails.exception?.description ||
-        result.exceptionDetails.text ||
-        'evaluate failed'
+      result.exceptionDetails.exception?.description || result.exceptionDetails.text || 'evaluate failed'
     );
   }
   return result.result?.value;
@@ -191,9 +179,7 @@ async function screenshot(cdp, name) {
 
   const ratio = Math.abs(buf.length - baseline.length) / Math.max(baseline.length, 1);
   if (ratio > 0.25) {
-    console.error(
-      `  snapshot FAIL       ${name}.png (hash mismatch, size delta ${(ratio * 100).toFixed(1)}%)`
-    );
+    console.error(`  snapshot FAIL       ${name}.png (hash mismatch, size delta ${(ratio * 100).toFixed(1)}%)`);
     return { ok: false };
   }
   console.warn(
@@ -241,10 +227,9 @@ async function main() {
   try {
     await waitForDevtools(debugPort);
     // Open a page target (browser-level WS does not expose Page.*).
-    const newTargetRes = await fetch(
-      `http://127.0.0.1:${debugPort}/json/new?${encodeURIComponent(baseUrl)}`,
-      { method: 'PUT' }
-    );
+    const newTargetRes = await fetch(`http://127.0.0.1:${debugPort}/json/new?${encodeURIComponent(baseUrl)}`, {
+      method: 'PUT',
+    });
     if (!newTargetRes.ok) {
       throw new Error(`failed to open page target: HTTP ${newTargetRes.status}`);
     }
@@ -302,16 +287,10 @@ async function main() {
     console.log('PASS  send message');
     if (!(await screenshot(cdp, '02-after-send')).ok) failures++;
 
-    const nodeCountBefore = await evaluate(
-      cdp,
-      `document.querySelectorAll('[data-testid="canvas"] .node').length`
-    );
+    const nodeCountBefore = await evaluate(cdp, `document.querySelectorAll('[data-testid="canvas"] .node').length`);
     await evaluate(cdp, `document.querySelector('[data-testid="add-tool"]').click()`);
     await sleep(50);
-    const nodeCountAfter = await evaluate(
-      cdp,
-      `document.querySelectorAll('[data-testid="canvas"] .node').length`
-    );
+    const nodeCountAfter = await evaluate(cdp, `document.querySelectorAll('[data-testid="canvas"] .node').length`);
     assert(nodeCountAfter === nodeCountBefore + 1, 'add-tool did not create a node');
     console.log('PASS  add tool node', { nodeCountBefore, nodeCountAfter });
 

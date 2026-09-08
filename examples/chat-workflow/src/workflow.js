@@ -164,10 +164,7 @@ export function createWorkflow(canvas, edgesSvg, opts = {}) {
       const p2 = nodeCenter(b);
       const midX = (p1.x + p2.x) / 2;
       const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-      path.setAttribute(
-        'd',
-        `M ${p1.x} ${p1.y} C ${midX} ${p1.y}, ${midX} ${p2.y}, ${p2.x} ${p2.y}`
-      );
+      path.setAttribute('d', `M ${p1.x} ${p1.y} C ${midX} ${p1.y}, ${midX} ${p2.y}, ${p2.x} ${p2.y}`);
       path.setAttribute('class', `edge-path${activeEdgeIds.has(edge.id) ? ' active' : ''}`);
       edgesSvg.appendChild(path);
     }
@@ -248,11 +245,7 @@ export function createWorkflow(canvas, edgesSvg, opts = {}) {
   }
 
   function escapeHtml(value) {
-    return value
-      .replaceAll('&', '&amp;')
-      .replaceAll('<', '&lt;')
-      .replaceAll('>', '&gt;')
-      .replaceAll('"', '&quot;');
+    return value.replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;').replaceAll('"', '&quot;');
   }
 
   seed();

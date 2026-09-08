@@ -16,20 +16,7 @@ interface LoginFieldProps {
 }
 
 const LoginField = forwardRef<HTMLInputElement, LoginFieldProps>(function LoginField(
-  {
-    id,
-    name,
-    label,
-    type,
-    value,
-    autoComplete,
-    required,
-    invalid,
-    describedBy,
-    testId,
-    onChange,
-    trailing,
-  },
+  { id, name, label, type, value, autoComplete, required, invalid, describedBy, testId, onChange, trailing },
   ref
 ) {
   return (

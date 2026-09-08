@@ -22,10 +22,7 @@ import { readSessionWorkflow, type SessionWorkflowAttachment } from './sessionWo
 export function useSessionWorkflowChrome(conversation: TChatConversation | undefined) {
   const { t } = useTranslation();
   const workflow = useSessionWorkflow();
-  const attachment = useMemo(
-    () => (conversation ? readSessionWorkflow(conversation.extra) : null),
-    [conversation]
-  );
+  const attachment = useMemo(() => (conversation ? readSessionWorkflow(conversation.extra) : null), [conversation]);
 
   useEffect(() => {
     if (attachment?.open_by_default) {
@@ -80,11 +77,7 @@ export function useSessionWorkflowChrome(conversation: TChatConversation | undef
 
   const workflowPanel =
     conversation && workflow.isOpen ? (
-      <SessionWorkflowPanel
-        conversationId={conversation.id}
-        attachment={attachment}
-        onClose={() => workflow.close()}
-      />
+      <SessionWorkflowPanel conversationId={conversation.id} attachment={attachment} onClose={() => workflow.close()} />
     ) : null;
 
   return {
