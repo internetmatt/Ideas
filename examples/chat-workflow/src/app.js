@@ -169,5 +169,8 @@ function truncate(value, max) {
  * @param {number} ms
  */
 function wait(ms) {
-  return new Promise((resolve) => setTimeout(resolve, ms));
+  // Faster steps when opened with ?e2e=1 (used by snapshot / Playwright runs).
+  const e2e = new URLSearchParams(location.search).has('e2e');
+  const delay = e2e ? Math.min(ms, 40) : ms;
+  return new Promise((resolve) => setTimeout(resolve, delay));
 }
