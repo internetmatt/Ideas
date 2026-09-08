@@ -59,7 +59,7 @@ The production attach points now live in the AionUi desktop package (this Ideas 
 - Full-page canvas route: `#/flowise` (`packages/desktop/src/renderer/pages/flowise`)
 - Session-bound panel: conversation header **Canvas** toggle → `conversation.extra.session_workflow`
 - Flowise URL resolution: `packages/desktop/src/renderer/services/flowise/resolveFlowiseUrl.ts`
-  - Default local base: `http://127.0.0.1:3011` (port **3000** is reserved for Projecto shell-router)
+  - Default Flowise base: `http://127.0.0.1:3010` (Ideas WebUI is **3011**; Projecto shell-router is **3000**)
 
 This `examples/chat-workflow` demo remains a zero-dep UX sandbox / snapshot harness.
 

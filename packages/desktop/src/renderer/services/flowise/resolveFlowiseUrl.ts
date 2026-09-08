@@ -7,11 +7,12 @@
  * Keeps Flowise deployable as a separate service while AionUi embeds it.
  *
  * Port map (local / Projecto stack):
- * - 3000 → Projecto shell-router (do not bind Flowise here)
- * - 3011 → Flowise / Ideas canvas default
+ * - 3000 → Projecto shell-router
+ * - 3010 → Flowise (embed target)
+ * - 3011 → Ideas / AionUi WebUI
  */
 
-export const DEFAULT_FLOWISE_URL = 'http://127.0.0.1:3011';
+export const DEFAULT_FLOWISE_URL = 'http://127.0.0.1:3010';
 
 export type FlowiseIntegrations = {
   flowiseUrl?: string;
