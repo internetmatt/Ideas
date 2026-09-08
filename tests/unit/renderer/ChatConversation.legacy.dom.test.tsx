@@ -60,6 +60,10 @@ vi.mock('@/renderer/hooks/context/LayoutContext', () => ({
   useLayoutContext: () => ({ isMobile: false }),
 }));
 
+vi.mock('@/renderer/pages/conversation/Workflow', () => ({
+  useSessionWorkflowChrome: () => ({ workflowOpen: false, workflowPanel: null, headerButton: null }),
+}));
+
 vi.mock('@/renderer/pages/conversation/Preview', () => ({
   usePreviewContext: () => ({ openPreview: vi.fn() }),
 }));
