@@ -37,6 +37,19 @@ function isBrowserWebUi(): boolean {
   return typeof window !== 'undefined' && !window.electronAPI;
 }
 
+function isLoopbackFlowiseEngine(configured: string): boolean {
+  try {
+    const url = new URL(configured);
+    if (url.hostname !== '127.0.0.1' && url.hostname !== 'localhost' && url.hostname !== '::1') {
+      return false;
+    }
+    const port = url.port || (url.protocol === 'https:' ? '443' : '80');
+    return port === '3010';
+  } catch {
+    return false;
+  }
+}
+
 function normalizeFlowiseBase(configured: string): string {
   if (configured.startsWith('/') && !configured.startsWith('//')) {
     return configured.replace(/\/$/, '') || CANVAS_ISLAND_MOUNT;
@@ -71,7 +84,13 @@ export function resolveFlowiseUrl(override?: string): string {
     buildTimeFlowiseUrl() ||
     DEFAULT_FLOWISE_URL;
 
-  return normalizeFlowiseBase(configured);
+  const normalized = normalizeFlowiseBase(configured);
+  // Stored session_workflow.base_url and ?flowiseUrl= still point at the
+  // engine. WebUI must iframe the island, not :3010.
+  if (isBrowserWebUi() && (isLoopbackFlowiseEngine(configured) || isLoopbackFlowiseEngine(normalized))) {
+    return CANVAS_ISLAND_MOUNT;
+  }
+  return normalized;
 }
 
 export function canvasPathForFlowType(flowType?: FlowiseFlowType): '/v2/agentcanvas' | '/canvas' {

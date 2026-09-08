@@ -26,9 +26,12 @@ import path from 'node:path';
 import serveHandler from 'serve-handler';
 import {
   CANVAS_ISLAND_MOUNT,
+  canvasIslandRedirect,
   forwardToFlowiseIsland,
   isCanvasIslandUrl,
   isFlowiseApiStolenByIdeas,
+  isFlowiseSpaLeakPath,
+  isIslandAuthDocumentRequest,
   parseFlowiseOrigin,
   type FlowiseOrigin,
 } from './canvas-island.js';
@@ -297,6 +300,25 @@ export async function startStaticServer(opts: StaticServerOptions): Promise<Stat
       }
       if (isFlowiseApiStolenByIdeas(req.url, typeof req.headers.referer === 'string' ? req.headers.referer : undefined)) {
         forwardToFlowiseIsland(req, res, flowiseOrigin, req.url);
+        return;
+      }
+
+      // Flowise BrowserRouter drops `/canvas-island` and the iframe lands on
+      // Ideas (`/v2/agentcanvas`, `/chatflows`, …). Put it back on the mount.
+      if (isFlowiseSpaLeakPath(req.url)) {
+        res.writeHead(302, { location: canvasIslandRedirect(req.url), 'cache-control': 'no-store' });
+        res.end();
+        return;
+      }
+      if (
+        isIslandAuthDocumentRequest(
+          req.method,
+          req.url,
+          typeof req.headers.referer === 'string' ? req.headers.referer : undefined
+        )
+      ) {
+        res.writeHead(302, { location: canvasIslandRedirect(req.url), 'cache-control': 'no-store' });
+        res.end();
         return;
       }
 

@@ -3,70 +3,149 @@
  * Copyright 2025 AionUi (aionui.com)
  * SPDX-License-Identifier: Apache-2.0
  *
- * Full-page OpenIdeas canvas. The iframe stays an island; Ideas only uses the typed client.
+ * OpenIdeas canvas island for the active assistant. No "open direct" / reload
+ * iframe chrome — the island is same-origin. Flows are session_workflow
+ * attachments, not a global Untitled Agent dump.
  */
 
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { Button, Select, Tag } from '@arco-design/web-react';
-import { ShareOne, Refresh } from '@icon-park/react';
+import { Button, Tag } from '@arco-design/web-react';
+import { ShareOne } from '@icon-park/react';
 import { useTranslation } from 'react-i18next';
+import { ipcBridge } from '@/common';
+import type { TChatConversation } from '@/common/config/storage';
+import { useCurrentConversation } from '@renderer/pages/conversation/explorer/currentConversationStore';
+import { getConversationOrNull } from '@renderer/pages/conversation/utils/conversationCache';
+import {
+  attachmentFromChatflow,
+  readSessionWorkflow,
+  type SessionWorkflowAttachment,
+} from '@renderer/pages/conversation/Workflow/sessionWorkflow';
 import {
   buildFlowiseEmbedUrl,
   createBlankAgentflow,
-  listChatflows,
+  getChatflow,
   pingFlowise,
   resolveFlowiseUrl,
   type FlowiseChatflow,
 } from '@renderer/services/flowise';
+import { canvasNameForAssistant } from './flowisePageModel';
 
 const FlowisePage: React.FC = () => {
   const { t } = useTranslation();
+  const conversationId = useCurrentConversation();
   const flowiseUrl = useMemo(() => resolveFlowiseUrl(), []);
-  const [frameKey, setFrameKey] = useState(0);
   const [status, setStatus] = useState<'checking' | 'online' | 'offline'>('checking');
-  const [flows, setFlows] = useState<FlowiseChatflow[]>([]);
-  const [selectedId, setSelectedId] = useState<string | undefined>();
+  const [conversation, setConversation] = useState<TChatConversation | null>(null);
+  const [attachedFlow, setAttachedFlow] = useState<FlowiseChatflow | null>(null);
   const [busy, setBusy] = useState(false);
 
-  const selected = flows.find((flow) => flow.id === selectedId);
+  const attachment = useMemo(() => readSessionWorkflow(conversation?.extra), [conversation]);
+  const assistantName = conversation?.assistant?.name || conversation?.name || '';
+
   const embedUrl = useMemo(
-    () => buildFlowiseEmbedUrl({ baseUrl: flowiseUrl, flowId: selectedId, flowType: selected?.type }),
-    [flowiseUrl, selectedId, selected?.type]
+    () =>
+      buildFlowiseEmbedUrl({
+        baseUrl: flowiseUrl,
+        flowId: attachment?.flow_id,
+        conversationId: conversation?.id,
+        flowType: attachedFlow?.type || attachment?.flow_type,
+      }),
+    [flowiseUrl, attachment?.flow_id, attachment?.flow_type, attachedFlow?.type, conversation?.id]
+  );
+
+  const persistAttachment = useCallback(
+    async (next: SessionWorkflowAttachment) => {
+      if (!conversation) return;
+      await ipcBridge.conversation.update.invoke({
+        id: conversation.id,
+        updates: {
+          extra: {
+            ...(conversation.extra as Record<string, unknown>),
+            session_workflow: next,
+          } as TChatConversation['extra'],
+        },
+        merge_extra: true,
+      });
+      setConversation((current) =>
+        current
+          ? {
+              ...current,
+              extra: { ...(current.extra as Record<string, unknown>), session_workflow: next } as TChatConversation['extra'],
+            }
+          : current
+      );
+    },
+    [conversation]
   );
 
   const refresh = useCallback(async () => {
     const online = await pingFlowise(flowiseUrl);
     setStatus(online ? 'online' : 'offline');
-    if (!online) {
-      setFlows([]);
+    if (!conversationId) {
+      setConversation(null);
+      setAttachedFlow(null);
+      return;
+    }
+    const nextConversation = await getConversationOrNull(conversationId);
+    setConversation(nextConversation);
+    const nextAttachment = readSessionWorkflow(nextConversation?.extra);
+    if (!online || !nextAttachment?.flow_id) {
+      setAttachedFlow(null);
       return;
     }
     try {
-      const next = await listChatflows(flowiseUrl);
-      setFlows(next);
-      setSelectedId((current) => current && next.some((flow) => flow.id === current) ? current : next[0]?.id);
+      setAttachedFlow(await getChatflow(flowiseUrl, nextAttachment.flow_id));
     } catch {
-      setFlows([]);
+      setAttachedFlow(null);
     }
-  }, [flowiseUrl]);
+  }, [conversationId, flowiseUrl]);
 
   useEffect(() => {
     void refresh();
-  }, [refresh, frameKey]);
+  }, [refresh]);
 
-  const onCreate = useCallback(async () => {
+  const onCreateForAssistant = useCallback(async () => {
+    if (!conversation) return;
     setBusy(true);
     try {
-      const created = await createBlankAgentflow(flowiseUrl);
-      setFlows((current) => [created, ...current.filter((flow) => flow.id !== created.id)]);
-      setSelectedId(created.id);
-      setFrameKey((value) => value + 1);
+      const created = await createBlankAgentflow(flowiseUrl, canvasNameForAssistant(assistantName));
+      setAttachedFlow(created);
+      await persistAttachment(attachmentFromChatflow(created, flowiseUrl));
     } catch {
-      // keep picker; create can fail while ping still works
+      // ping can succeed while create is denied
     } finally {
       setBusy(false);
     }
-  }, [flowiseUrl]);
+  }, [assistantName, conversation, flowiseUrl, persistAttachment]);
+
+  const island =
+    attachment?.flow_id && status === 'online' ? (
+      <iframe
+        className='flex-1 min-h-0 w-full border-0 bg-1'
+        title={attachedFlow?.name || t('conversation.workflow.canvas')}
+        src={embedUrl}
+        allow='clipboard-read; clipboard-write; microphone; camera; autoplay; fullscreen'
+        data-testid='flowise-frame'
+      />
+    ) : (
+      <div className='flex-1 min-h-0 flex items-center justify-center px-24px' data-testid='flowise-empty'>
+        <div className='max-w-420px text-center text-13px text-t-secondary leading-22px'>
+          {!conversationId
+            ? 'Open an assistant conversation to see its OpenIdeas canvas.'
+            : status === 'offline'
+              ? 'OpenIdeas is offline.'
+              : `No canvas is attached to ${assistantName || 'this assistant'} yet.`}
+          {conversationId && status === 'online' ? (
+            <div className='mt-16px'>
+              <Button size='small' type='primary' loading={busy} onClick={() => void onCreateForAssistant()} data-testid='flowise-new-agentflow'>
+                {t('conversation.workflow.newAgentflow')}
+              </Button>
+            </div>
+          ) : null}
+        </div>
+      </div>
+    );
 
   return (
     <section className='size-full min-h-0 flex flex-col bg-1' data-testid='flowise-page'>
@@ -81,42 +160,16 @@ const FlowisePage: React.FC = () => {
                 ? t('conversation.workflow.statusOffline')
                 : t('conversation.workflow.statusChecking')}
           </Tag>
-          <Select
-            size='small'
-            className='w-220px'
-            placeholder={t('conversation.workflow.selectFlow')}
-            value={selectedId}
-            onChange={(value) => setSelectedId(String(value))}
-            data-testid='flowise-flow-select'
-          >
-            {flows.map((flow) => (
-              <Select.Option key={flow.id} value={flow.id}>
-                {flow.name}
-              </Select.Option>
-            ))}
-          </Select>
-          <span className='text-12px text-t-secondary truncate'>{flowiseUrl}</span>
-        </div>
-        <div className='flex items-center gap-8px'>
-          <Button size='small' loading={busy} onClick={() => void onCreate()} data-testid='flowise-new-agentflow'>
-            {t('conversation.workflow.newAgentflow')}
-          </Button>
-          <Button size='small' icon={<Refresh />} onClick={() => setFrameKey((value) => value + 1)}>
-            {t('conversation.workflow.reload')}
-          </Button>
-          <Button size='small' type='primary' onClick={() => window.open(embedUrl, '_blank', 'noopener,noreferrer')}>
-            {t('conversation.workflow.openDirect')}
-          </Button>
+          {attachedFlow ? (
+            <span className='text-13px text-t-primary truncate' data-testid='flowise-attached-name'>
+              {attachedFlow.name}
+            </span>
+          ) : assistantName ? (
+            <span className='text-13px text-t-secondary truncate'>{assistantName}</span>
+          ) : null}
         </div>
       </header>
-      <iframe
-        key={`${frameKey}:${selectedId ?? 'root'}`}
-        className='flex-1 min-h-0 w-full border-0 bg-1'
-        title={t('conversation.workflow.canvas')}
-        src={embedUrl}
-        allow='clipboard-read; clipboard-write; microphone; camera; autoplay; fullscreen'
-        data-testid='flowise-frame'
-      />
+      {island}
     </section>
   );
 };

@@ -8,9 +8,10 @@
 
 import React, { useEffect, useMemo, useState } from 'react';
 import { Button, Select, Tag } from '@arco-design/web-react';
-import { Close, Refresh, ShareOne } from '@icon-park/react';
+import { Close, ShareOne } from '@icon-park/react';
 import { useTranslation } from 'react-i18next';
 import { buildFlowiseEmbedUrl, listChatflows, pingFlowise, resolveFlowiseUrl, type FlowiseChatflow } from '@renderer/services/flowise';
+import { flowsForAssistant } from '@renderer/pages/flowise/flowisePageModel';
 import { attachmentFromChatflow, type SessionWorkflowAttachment } from './sessionWorkflow';
 
 type Props = {
@@ -22,7 +23,6 @@ type Props = {
 
 const SessionWorkflowPanel: React.FC<Props> = ({ conversationId, attachment, onClose, onAttach }) => {
   const { t } = useTranslation();
-  const [frameKey, setFrameKey] = useState(0);
   const [status, setStatus] = useState<'checking' | 'online' | 'offline'>('checking');
   const [flows, setFlows] = useState<FlowiseChatflow[]>([]);
   const baseUrl = useMemo(() => resolveFlowiseUrl(attachment?.base_url), [attachment?.base_url]);
@@ -50,7 +50,7 @@ const SessionWorkflowPanel: React.FC<Props> = ({ conversationId, attachment, onC
       }
     });
     return () => controller.abort();
-  }, [baseUrl, attachment?.flow_id, frameKey]);
+  }, [baseUrl, attachment?.flow_id]);
 
   return (
     <section className='size-full min-h-0 flex flex-col bg-1' data-testid='session-workflow-panel'>
@@ -76,7 +76,7 @@ const SessionWorkflowPanel: React.FC<Props> = ({ conversationId, attachment, onC
               }}
               data-testid='session-workflow-flow-select'
             >
-              {flows.map((flow) => (
+              {flowsForAssistant(flows, attachment).map((flow) => (
                 <Select.Option key={flow.id} value={flow.id}>
                   {flow.name}
                 </Select.Option>
@@ -85,20 +85,21 @@ const SessionWorkflowPanel: React.FC<Props> = ({ conversationId, attachment, onC
           ) : null}
         </div>
         <div className='flex items-center gap-4px shrink-0'>
-          <Button size='mini' icon={<Refresh />} onClick={() => setFrameKey((value) => value + 1)}>
-            {t('conversation.workflow.reload')}
-          </Button>
           <Button size='mini' type='text' icon={<Close />} onClick={onClose} aria-label={t('common.close')} />
         </div>
       </header>
+      {attachment?.flow_id ? (
       <iframe
-        key={`${frameKey}:${attachment?.flow_id ?? 'root'}`}
+        key={attachment.flow_id}
         className='flex-1 min-h-0 w-full border-0 bg-1'
         title={t('conversation.workflow.sessionCanvas')}
         src={embedUrl}
         allow='clipboard-read; clipboard-write; microphone; camera; autoplay; fullscreen'
         data-testid='session-workflow-frame'
       />
+      ) : (
+        <div className='flex-1 min-h-0' data-testid='session-workflow-empty' />
+      )}
     </section>
   );
 };

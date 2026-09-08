@@ -114,6 +114,35 @@ describe('static-server', () => {
     expect(json.proxied).toBe(true);
   });
 
+  it('302s leaked Flowise /v2/agentcanvas onto /canvas-island', async () => {
+    const backend = await startMockBackend((_req, res) => res.end('nope'));
+    stopBackend = backend.close;
+    handle = await startStaticServer({ staticDir, backendPort: backend.port, port: 0 });
+    const r = await fetch(`${handle.localUrl}/v2/agentcanvas/abc`, { redirect: 'manual' });
+    expect(r.status).toBe(302);
+    expect(r.headers.get('location')).toBe('/canvas-island/v2/agentcanvas/abc');
+  });
+
+  it('302s GET /login from the island iframe, not Ideas POST /login', async () => {
+    const backend = await startMockBackend((req, res) => {
+      if (req.url === '/login' && req.method === 'GET') {
+        res.writeHead(405).end('aioncore');
+        return;
+      }
+      res.writeHead(404).end();
+    });
+    stopBackend = backend.close;
+    handle = await startStaticServer({ staticDir, backendPort: backend.port, port: 0 });
+    const leaked = await fetch(`${handle.localUrl}/login`, {
+      redirect: 'manual',
+      headers: { referer: 'http://127.0.0.1:3011/canvas-island/chatflows' },
+    });
+    expect(leaked.status).toBe(302);
+    expect(leaked.headers.get('location')).toBe('/canvas-island/login');
+    const ideasGet = await fetch(`${handle.localUrl}/login`, { redirect: 'manual' });
+    expect(ideasGet.status).toBe(405);
+  });
+
   it('/api/auth/user reverse-proxies to backend (no local handler)', async () => {
     const backend = await startMockBackend((req, res) => {
       if (req.url === '/api/auth/user' && req.method === 'GET') {
@@ -456,7 +485,8 @@ describe('static-server', () => {
       const r = await fetch(`${handle.localUrl}/`);
       expect(r.status).toBe(200);
       const text = await r.text();
-      expect(text).toContain('window.__PROJECTO_INTEGRATIONS__={"productName":"Projecto"}');
+      expect(text).toContain('"productName":"Projecto"');
+      expect(text).toContain('"flowiseUrl":"/canvas-island"');
       expect(text).toContain('<title>Projecto</title>');
       expect(text).not.toContain('<title>root</title>');
     });
