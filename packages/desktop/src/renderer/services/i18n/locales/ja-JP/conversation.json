@@ -797,6 +797,7 @@
     "untitledAgentflow": "無題のエージェントフロー",
     "openIdeasOffline": "OpenIdeas はオフラインです。",
     "emptySessionHint": "既存のチャットフロー／エージェントフローを選ぶか、このセッション用に新規作成してください。",
-    "emptyCanvasHint": "一覧から選ぶか、新しいフローを作成してください。"
+    "emptyCanvasHint": "一覧から選ぶか、新しいフローを作成してください。",
+    "predictFailed": "OpenIdeas はこのメッセージに応答できませんでした。"
   }
 }
