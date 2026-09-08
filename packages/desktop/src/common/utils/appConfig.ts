@@ -3,6 +3,7 @@
  * Copyright 2025 AionUi (aionui.com)
  * SPDX-License-Identifier: Apache-2.0
  */
+import { PRODUCT_NAME } from '../branding';
 
 // Configuration for app info - to be set by the caller in main process
 let appConfig: { name: string; version: string; protocolVersion: string } | null = null;
@@ -23,7 +24,7 @@ export function setAppConfig(config: { name: string; version: string; protocolVe
  * Gets the application client name from the app config if available
  */
 export const getConfiguredAppClientName = (): string => {
-  return appConfig?.name || 'AionUi';
+  return appConfig?.name || PRODUCT_NAME;
 };
 
 /**
