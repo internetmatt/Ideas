@@ -83,7 +83,11 @@ export function pickLanIP(nets: ReturnType<typeof networkInterfaces>): string | 
 }
 
 function getLanIP(): string | null {
-  return pickLanIP(networkInterfaces());
+  try {
+    return pickLanIP(networkInterfaces());
+  } catch {
+    return null;
+  }
 }
 
 function forwardToBackend(req: IncomingMessage, res: ServerResponse, backendPort: number): void {

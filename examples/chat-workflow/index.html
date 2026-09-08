@@ -18,27 +18,13 @@
         </div>
         <div class="session-meta">
           <span class="pill" id="session-id" data-testid="session-id">session · demo-01</span>
-          <span class="pill muted" id="workflow-status" data-testid="workflow-status"
-            >workflow idle</span
-          >
+          <span class="pill muted" id="workflow-status" data-testid="workflow-status">workflow idle</span>
         </div>
         <div class="top-actions">
-          <button
-            type="button"
-            class="btn ghost"
-            id="btn-reset"
-            data-testid="btn-reset"
-            title="Reset session"
-          >
+          <button type="button" class="btn ghost" id="btn-reset" data-testid="btn-reset" title="Reset session">
             Reset
           </button>
-          <button
-            type="button"
-            class="btn primary"
-            id="btn-run"
-            data-testid="btn-run"
-            title="Run attached workflow"
-          >
+          <button type="button" class="btn primary" id="btn-run" data-testid="btn-run" title="Run attached workflow">
             Run workflow
           </button>
         </div>
@@ -50,13 +36,7 @@
             <h1>Chat</h1>
             <p>Messages share context with the attached graph.</p>
           </div>
-          <div
-            class="transcript"
-            id="transcript"
-            data-testid="transcript"
-            role="log"
-            aria-live="polite"
-          ></div>
+          <div class="transcript" id="transcript" data-testid="transcript" role="log" aria-live="polite"></div>
           <form class="composer" id="composer" data-testid="composer">
             <label class="sr-only" for="composer-input">Message</label>
             <textarea
@@ -78,24 +58,16 @@
             </div>
             <div class="palette" id="palette" data-testid="palette">
               <button type="button" class="chip" data-node="llm" data-testid="add-llm">+ LLM</button>
-              <button type="button" class="chip" data-node="tool" data-testid="add-tool">
-                + Tool
-              </button>
-              <button type="button" class="chip" data-node="branch" data-testid="add-branch">
-                + Branch
-              </button>
-              <button type="button" class="chip" data-node="reply" data-testid="add-reply">
-                + Reply
-              </button>
+              <button type="button" class="chip" data-node="tool" data-testid="add-tool">+ Tool</button>
+              <button type="button" class="chip" data-node="branch" data-testid="add-branch">+ Branch</button>
+              <button type="button" class="chip" data-node="reply" data-testid="add-reply">+ Reply</button>
             </div>
           </div>
           <div class="canvas-wrap" data-testid="canvas-wrap">
             <svg id="edges" class="edges" aria-hidden="true"></svg>
             <div id="canvas" class="canvas" data-testid="canvas"></div>
           </div>
-          <p class="hint">
-            Drag nodes · click a port then another to connect · Run streams steps into chat
-          </p>
+          <p class="hint">Drag nodes · click a port then another to connect · Run streams steps into chat</p>
         </section>
       </main>
     </div>

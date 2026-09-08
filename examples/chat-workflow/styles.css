@@ -74,9 +74,7 @@ body {
   width: 34px;
   height: 34px;
   border-radius: 10px;
-  background:
-    linear-gradient(135deg, var(--accent), #5ee0c4 70%),
-    var(--accent);
+  background: linear-gradient(135deg, var(--accent), #5ee0c4 70%), var(--accent);
   box-shadow: 0 0 0 1px rgba(184, 242, 109, 0.35);
   animation: pulse-mark 3.2s ease-in-out infinite;
 }
@@ -398,7 +396,9 @@ body {
 
 .node.active {
   border-color: var(--run);
-  box-shadow: 0 0 0 1px rgba(94, 224, 196, 0.45), 0 12px 28px rgba(0, 0, 0, 0.35);
+  box-shadow:
+    0 0 0 1px rgba(94, 224, 196, 0.45),
+    0 12px 28px rgba(0, 0, 0, 0.35);
   transform: translateY(-2px);
 }
 

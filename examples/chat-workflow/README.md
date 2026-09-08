@@ -32,12 +32,12 @@ UPDATE_SNAPSHOTS=1 node examples/chat-workflow/e2e/run.mjs
 
 Baselines live in `examples/chat-workflow/__snapshots__/`:
 
-| Snapshot | Scene |
-| --- | --- |
-| `01-initial-load.png` | Seeded chat + 4-node graph |
-| `02-after-send.png` | After sending a user message |
-| `03-after-run.png` | After Run workflow (steps + reply) |
-| `04-after-reset.png` | After Reset |
+| Snapshot              | Scene                              |
+| --------------------- | ---------------------------------- |
+| `01-initial-load.png` | Seeded chat + 4-node graph         |
+| `02-after-send.png`   | After sending a user message       |
+| `03-after-run.png`    | After Run workflow (steps + reply) |
+| `04-after-reset.png`  | After Reset                        |
 
 Playwright twin (needs `@playwright/test`):
 
@@ -62,4 +62,3 @@ The production attach points now live in the AionUi desktop package (this Ideas 
   - Default Flowise base: `http://127.0.0.1:3010` (Ideas WebUI is **3011**; Projecto shell-router is **3000**)
 
 This `examples/chat-workflow` demo remains a zero-dep UX sandbox / snapshot harness.
-

@@ -48,7 +48,8 @@ const LoginPage: React.FC = () => {
   }, [i18n.language]);
 
   useEffect(() => {
-    if (import.meta.env.MODE === 'test') {
+    const mode = (import.meta as ImportMeta & { env?: Record<string, string | undefined> }).env?.MODE;
+    if (mode === 'test') {
       return;
     }
     emailRef.current?.focus();
@@ -176,14 +177,8 @@ const LoginPage: React.FC = () => {
           {forgotOpen ? (
             <>
               <h1 className='login-page__heading'>{t('login.forgotPassword')}</h1>
-              <p className='login-page__help'>
-                {t('login.forgotPasswordHelp')}
-              </p>
-              <button
-                type='button'
-                className='login-page__forgot'
-                onClick={() => setForgotOpen(false)}
-              >
+              <p className='login-page__help'>{t('login.forgotPasswordHelp')}</p>
+              <button type='button' className='login-page__forgot' onClick={() => setForgotOpen(false)}>
                 {t('login.backToSignIn')}
               </button>
             </>

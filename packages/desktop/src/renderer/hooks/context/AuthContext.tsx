@@ -149,10 +149,7 @@ export const AuthProvider: React.FC<React.PropsWithChildren> = ({ children }) =>
     // Host-owned panel (Projecto / Ideas): trust injected JWT before local login.
     const projectoUser = userFromProjectoIntegrations();
     const hostWhitelabel = window.__PROJECTO_INTEGRATIONS__?.whitelabel;
-    if (
-      projectoUser &&
-      (hostWhitelabel === 'projecto' || hostWhitelabel === 'ideas')
-    ) {
+    if (projectoUser && (hostWhitelabel === 'projecto' || hostWhitelabel === 'ideas')) {
       setUser(projectoUser);
       setStatus('authenticated');
       setReady(true);

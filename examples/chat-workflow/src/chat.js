@@ -51,10 +51,7 @@ export function createChat(root) {
       'This chat session owns the workflow on the right. Edit the graph, then Run — steps stream here as one assistant turn.'
     );
     push('user', 'Summarize today’s risks and draft a reply to the client.');
-    push(
-      'assistant',
-      'Attach tools on the canvas (retrieve notes → draft → reply). Hit Run workflow when ready.'
-    );
+    push('assistant', 'Attach tools on the canvas (retrieve notes → draft → reply). Hit Run workflow when ready.');
   }
 
   return { push, clear, seed, getMessages: () => messages.slice() };

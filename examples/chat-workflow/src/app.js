@@ -72,8 +72,7 @@ btnRun.addEventListener('click', async () => {
   }
 
   const latestUser =
-    [...chat.getMessages()].reverse().find((m) => m.role === 'user')?.text ??
-    '(empty session message)';
+    [...chat.getMessages()].reverse().find((m) => m.role === 'user')?.text ?? '(empty session message)';
 
   chat.push('step', `Starting run for: “${latestUser}”`);
 
@@ -88,10 +87,7 @@ btnRun.addEventListener('click', async () => {
 
   workflow.clearHighlight();
   workflow.highlight(null, []);
-  chat.push(
-    'assistant',
-    draftReply(latestUser, order)
-  );
+  chat.push('assistant', draftReply(latestUser, order));
   setStatus('workflow idle', false);
   btnRun.disabled = false;
 });
@@ -144,9 +140,7 @@ function describeStep(node, userText) {
  */
 function draftReply(userText, order) {
   const tools = order.filter((n) => n.type === 'tool').map((n) => n.title);
-  const toolLine = tools.length
-    ? `Used: ${tools.join(', ')}.`
-    : 'No tools on this path — pure LLM draft.';
+  const toolLine = tools.length ? `Used: ${tools.join(', ')}.` : 'No tools on this path — pure LLM draft.';
   return (
     `Here’s a session-bound reply shaped by the attached workflow.\n\n` +
     `Request: ${truncate(userText, 160)}\n` +
