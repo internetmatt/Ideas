@@ -90,17 +90,29 @@ export async function getChatflow(baseUrl: string | undefined, id: string): Prom
   return parsed;
 }
 
-export async function createBlankAgentflow(baseUrl?: string, name = 'Untitled Agent'): Promise<FlowiseChatflow> {
+async function createBlankFlow(
+  baseUrl: string | undefined,
+  name: string,
+  type: Extract<FlowiseFlowType, 'CHATFLOW' | 'AGENTFLOW'>
+): Promise<FlowiseChatflow> {
   const parsed = parseFlowiseChatflow(
     await flowiseFetch(resolveFlowiseUrl(baseUrl), '/api/v1/chatflows', {
       method: 'POST',
       body: JSON.stringify({
         name,
-        type: 'AGENTFLOW',
+        type,
         flowData: EMPTY_FLOW_DATA,
       }),
     })
   );
   if (!parsed) throw new FlowiseClientError('OpenIdeas create returned an invalid chatflow', 502);
   return parsed;
+}
+
+export async function createBlankChatflow(baseUrl?: string, name = 'Untitled Chatflow'): Promise<FlowiseChatflow> {
+  return createBlankFlow(baseUrl, name, 'CHATFLOW');
+}
+
+export async function createBlankAgentflow(baseUrl?: string, name = 'Untitled Agent'): Promise<FlowiseChatflow> {
+  return createBlankFlow(baseUrl, name, 'AGENTFLOW');
 }

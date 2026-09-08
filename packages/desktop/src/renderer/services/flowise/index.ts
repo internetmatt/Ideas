@@ -12,6 +12,7 @@ export {
 } from './resolveFlowiseUrl';
 export {
   createBlankAgentflow,
+  createBlankChatflow,
   FlowiseClientError,
   getChatflow,
   isFlowiseFlowType,

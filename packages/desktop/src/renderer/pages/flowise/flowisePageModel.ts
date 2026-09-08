@@ -3,30 +3,51 @@
  * Copyright 2025 AionUi (aionui.com)
  * SPDX-License-Identifier: Apache-2.0
  *
- * Canvas page is an OpenIdeas island scoped to the active assistant — not a
- * global dump of every Untitled Agent draft.
+ * Helpers for the OpenIdeas canvas pickers (session panel + full Canvas page).
  */
 
-import { EMPTY_FLOW_DATA, type FlowiseChatflow } from '@renderer/services/flowise';
-import type { SessionWorkflowAttachment } from '@renderer/pages/conversation/Workflow/sessionWorkflow';
+import { EMPTY_FLOW_DATA, type FlowiseChatflow, type FlowiseFlowType } from '@renderer/services/flowise';
 
 export function isUntitledDraft(flow: FlowiseChatflow): boolean {
   const name = flow.name.trim().toLowerCase();
-  if (name !== 'untitled agent' && name !== 'new agentflow') return false;
+  if (
+    name !== 'untitled agent' &&
+    name !== 'new agentflow' &&
+    name !== 'untitled chatflow' &&
+    name !== 'new chatflow'
+  ) {
+    return false;
+  }
   return !flow.flowData || flow.flowData === EMPTY_FLOW_DATA;
 }
 
-export function canvasNameForAssistant(assistantName: string): string {
+export function canvasNameForAssistant(assistantName: string, kind: 'CHATFLOW' | 'AGENTFLOW' = 'AGENTFLOW'): string {
   const base = assistantName.trim() || 'Assistant';
-  return `${base} canvas`;
+  return kind === 'CHATFLOW' ? `${base} chatflow` : `${base} canvas`;
 }
 
+export function flowTypeLabel(type?: FlowiseFlowType): string {
+  if (type === 'CHATFLOW') return 'Chatflow';
+  if (type === 'AGENTFLOW' || type === 'MULTIAGENT') return 'Agentflow';
+  if (type === 'ASSISTANT') return 'Assistant';
+  return 'Flow';
+}
+
+export function flowOptionLabel(flow: FlowiseChatflow): string {
+  return `${flowTypeLabel(flow.type)} · ${flow.name}`;
+}
+
+/** All attachable flows for the Canvas / session pickers (hide empty untitled drafts). */
+export function flowsForPicker(flows: FlowiseChatflow[]): FlowiseChatflow[] {
+  return flows.filter((flow) => !isUntitledDraft(flow));
+}
+
+/**
+ * @deprecated Prefer flowsForPicker — session canvas should list every chatflow/agentflow.
+ */
 export function flowsForAssistant(
   flows: FlowiseChatflow[],
-  attachment: SessionWorkflowAttachment | null
+  _attachment: { flow_id?: string } | null
 ): FlowiseChatflow[] {
-  if (attachment?.flow_id) {
-    return flows.filter((flow) => flow.id === attachment.flow_id);
-  }
-  return flows.filter((flow) => !isUntitledDraft(flow));
+  return flowsForPicker(flows);
 }
