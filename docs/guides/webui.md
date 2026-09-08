@@ -22,7 +22,7 @@ WebUI mode starts AionUi with an embedded web server, allowing you to:
 - Use AionUi from remote devices on the same network (with `--remote` flag)
 - Run the application headless on servers
 
-Default access URL: `http://localhost:3000` (port may vary, check the application output)
+Default access URL: `http://localhost:3011` (Ideas fork; Flowise is `3010`, Projecto shell-router is `3000`)
 
 ---
 
@@ -312,10 +312,10 @@ AionUi --no-sandbox --webui
 Once started, open your browser and navigate to:
 
 ```
-http://localhost:25808
+http://localhost:3011
 ```
 
-**Note**: The default port is 25808. Check the terminal output if a different port is used.
+**Note**: On the Ideas fork the default port is **3011** (Flowise is **3010**; Projecto shell-router is **3000**). Check the terminal output if a different port is used.
 
 ### Expected Warnings (Non-Fatal)
 
@@ -342,13 +342,13 @@ AionUi --no-sandbox --webui --remote
 # ifconfig or ip addr show
 ```
 
-Access from other devices: `http://YOUR_ANDROID_IP:25808`
+Access from other devices: `http://YOUR_ANDROID_IP:3011`
 
 ### Troubleshooting
 
 #### Port Already in Use
 
-If port 25808 is occupied:
+If port 3011 is occupied:
 
 ```bash
 # Specify a different port

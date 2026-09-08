@@ -101,11 +101,14 @@ export const DEFAULT_IMAGE_EXTENSION = '.png';
 
 // ===== WebUI 相关常量 =====
 
-/** WebUI default port: 25808 for production, 25809 for development, 25810 for multi-instance dev */
+/**
+ * Ideas / Projecto local port map:
+ * 3000 Projecto shell-router · 3010 Flowise · 3011 Ideas WebUI · 3012 multi-instance WebUI
+ * (Upstream AionUi used 25808/25809/25810.)
+ */
 export const WEBUI_DEFAULT_PORT = (() => {
-  if (process.env.NODE_ENV === 'production') return 25808;
-  if (process.env.AIONUI_MULTI_INSTANCE === '1') return 25810;
-  return 25809;
+  if (process.env.AIONUI_MULTI_INSTANCE === '1') return 3012;
+  return 3011;
 })();
 
 export const TEAM_MODE_ENABLED = true;
