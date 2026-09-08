@@ -20,6 +20,31 @@ Open [http://localhost:4173](http://localhost:4173).
 
 No npm/Bun required — static HTML/CSS/JS so it runs under restricted egress.
 
+## E2E + snapshots
+
+Zero-dependency CDP runner (system Chrome, no Playwright install):
+
+```bash
+node examples/chat-workflow/e2e/run.mjs
+# refresh PNG baselines:
+UPDATE_SNAPSHOTS=1 node examples/chat-workflow/e2e/run.mjs
+```
+
+Baselines live in `examples/chat-workflow/__snapshots__/`:
+
+| Snapshot | Scene |
+| --- | --- |
+| `01-initial-load.png` | Seeded chat + 4-node graph |
+| `02-after-send.png` | After sending a user message |
+| `03-after-run.png` | After Run workflow (steps + reply) |
+| `04-after-reset.png` | After Reset |
+
+Playwright twin (needs `@playwright/test`):
+
+```bash
+npx playwright test examples/chat-workflow/e2e/chat-workflow.e2e.ts
+```
+
 ## Next integration (into AionUi)
 
 1. Persist `workflow` JSON on `TChatConversation.extra` (aioncore)
