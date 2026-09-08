@@ -46,9 +46,26 @@ describe('rewriteFlowiseIslandPayload', () => {
     expect(js).toContain('window.location.href="/canvas-island/login"');
     expect(js).toContain('window.location.origin+"/canvas-island"');
   });
-});
+  it('injects BrowserRouter basename for automatic-runtime jsx', () => {
+    const js = rewriteFlowiseIslandPayload(
+      ',{store:e,children:jsx(n,{children:jsx(App,{})};jsx(BrowserRouter,{children:App',
+      'application/javascript',
+      '/assets/index.js'
+    );
+    expect(js).toContain('children:jsx(n,{basename:"/canvas-island",children:');
+    expect(js).toContain('jsx(BrowserRouter,{basename:"/canvas-island",children:');
+  });
 
-describe('island path leaks', () => {
+  it('does not rewrite useRoutes config.basename', () => {
+    const js = rewriteFlowiseIslandPayload(
+      'useRoutes(r,ik.basename);ik={basename:""}',
+      'application/javascript',
+      '/assets/index.js'
+    );
+    expect(js).toContain('ik={basename:""}');
+    expect(js).not.toContain('ik={basename:"/canvas-island"}');
+  });
+});
   it('recognizes Flowise SPA paths that Ideas HashRouter never owns', () => {
     expect(isFlowiseSpaLeakPath('/v2/agentcanvas/abc')).toBe(true);
     expect(isFlowiseSpaLeakPath('/chatflows')).toBe(true);
