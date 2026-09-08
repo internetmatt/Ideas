@@ -798,5 +798,15 @@
     "progress": "{{completed}}/{{total}}",
     "expand": "Розгорнути план",
     "collapse": "Згорнути план"
+  },
+  "workflow": {
+    "canvas": "Canvas",
+    "sessionCanvas": "Session canvas",
+    "toggle": "Toggle session workflow canvas",
+    "reload": "Reload",
+    "openDirect": "Open direct",
+    "statusOnline": "online",
+    "statusOffline": "offline",
+    "statusChecking": "checking"
   }
 }

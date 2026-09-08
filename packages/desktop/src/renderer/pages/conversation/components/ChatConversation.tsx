@@ -24,6 +24,7 @@ import { emitter } from '../../../utils/emitter';
 import AcpChat from '../platforms/acp/AcpChat';
 import ChatLayout from './ChatLayout';
 import ChatSlider from './ChatSlider.tsx';
+import { useSessionWorkflowChrome } from '@/renderer/pages/conversation/Workflow';
 import AcpModelSelector from '@/renderer/components/agent/AcpModelSelector';
 import AcpRuntimeRestartButton from '@/renderer/components/agent/AcpRuntimeRestartButton';
 import { getConversationOrNull } from '@/renderer/pages/conversation/utils/conversationCache';
@@ -172,6 +173,7 @@ const AionrsConversationPanel: React.FC<{ conversation: AionrsConversation; slid
     initialModel: conversation.model,
     onSelectModel,
   });
+  const { workflowOpen, workflowPanel, headerButton: workflowHeaderButton } = useSessionWorkflowChrome(conversation);
   // Project conversations get the Layout-level Explorer column (stage3 FULL);
   // ChatLayout's own right sider is only for no-project (legacy tree), so it does
   // not double up or reserve an empty column.
@@ -208,6 +210,7 @@ const AionrsConversationPanel: React.FC<{ conversation: AionrsConversation; slid
     sider: <ChatSlider conversation={conversation} />,
     headerExtra: (
       <div className='flex items-center gap-8px'>
+        {workflowHeaderButton}
         <CronJobManager conversation_id={conversation.id} cron_job_id={cronJobId} />
         {!isMobile && (
           <AionrsModelSelector
@@ -224,6 +227,8 @@ const AionrsConversationPanel: React.FC<{ conversation: AionrsConversation; slid
     // project host (structurally persistent across same-project conversation
     // switches — no remount). ChatLayout then renders chat only.
     previewHosted: Boolean(conversation.project_id),
+    workflowOpen,
+    workflowPanel,
     workspacePath: conversation.extra?.workspace,
     // Key the workspace-panel collapse preference per-project (falls back to
     // conversation_id inside ChatLayout when there is no project) so the panel's
@@ -278,6 +283,7 @@ const ChatConversation: React.FC<{
     [conversation?.id]
   );
   useActiveLease({ type: 'conversation', id: conversation?.id });
+  const { workflowOpen, workflowPanel, headerButton: workflowHeaderButton } = useSessionWorkflowChrome(conversation);
   const workspaceEnabled = Boolean(conversation?.extra?.workspace) && !conversation?.project_id;
   const cronJobId = resolveCronJobId(conversation?.extra);
   const layout = useLayoutContext();
@@ -407,6 +413,7 @@ const ChatConversation: React.FC<{
 
   const headerExtraNode = (
     <div className='flex items-center gap-8px'>
+      {workflowHeaderButton}
       {conversation && (
         <div className='shrink-0'>
           <CronJobManager conversation_id={conversation.id} cron_job_id={cronJobId} />
@@ -433,6 +440,8 @@ const ChatConversation: React.FC<{
       sider={<ChatSlider conversation={conversation} />}
       workspaceEnabled={workspaceEnabled}
       previewHosted={Boolean(conversation?.project_id)}
+      workflowOpen={workflowOpen}
+      workflowPanel={workflowPanel}
       workspacePath={conversation?.extra?.workspace}
       workspacePreferenceKey={conversation?.project_id}
       isTemporaryWorkspace={

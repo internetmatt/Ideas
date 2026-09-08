@@ -6,6 +6,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import useSWR from 'swr';
 import ChatConversation from './components/ChatConversation';
 import { usePreviewContext } from '@/renderer/pages/conversation/Preview';
+import { SessionWorkflowProvider } from '@/renderer/pages/conversation/Workflow';
 import { previewScopeKey } from '@/renderer/pages/conversation/Preview/context/previewScope';
 import { setCurrentProject } from '@/renderer/pages/conversation/explorer/currentProjectStore';
 import { setCurrentConversation } from '@/renderer/pages/conversation/explorer/currentConversationStore';
@@ -107,7 +108,11 @@ const ChatConversationIndex: React.FC = () => {
   }, [id, isLoading, data, navigate, t]);
 
   if (isLoading) return <Spin loading></Spin>;
-  return <ChatConversation conversation={data ?? undefined}></ChatConversation>;
+  return (
+    <SessionWorkflowProvider>
+      <ChatConversation conversation={data ?? undefined}></ChatConversation>
+    </SessionWorkflowProvider>
+  );
 };
 
 export default ChatConversationIndex;

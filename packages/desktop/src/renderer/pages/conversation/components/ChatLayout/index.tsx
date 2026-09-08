@@ -45,6 +45,12 @@ const ChatLayout: React.FC<{
    * same-project conversation switches (no remount).
    */
   previewHosted?: boolean;
+  /**
+   * Session-bound Flowise workflow panel. When open, occupies the same split
+   * slot as the local preview panel (mutually exclusive while open).
+   */
+  workflowOpen?: boolean;
+  workflowPanel?: React.ReactNode;
   /** Conversation ID for mode switching */
   conversation_id?: string;
   /** Custom tabs slot; when provided, replaces the default ConversationTabs */
@@ -79,10 +85,12 @@ const ChatLayout: React.FC<{
   // including project conversations — fall back to ChatLayout's own mobile
   // overlay path, exactly how non-project conversations still render today.
   const previewHosted = Boolean(props.previewHosted) && !isMobile;
-  // For project conversations the preview lives at the Layout host, so this
-  // ChatLayout must behave as if there is no preview: chat fills, no split, no
-  // preview panel. Everywhere below uses `isPreviewOpen` for that local decision.
-  const isPreviewOpen = isPreviewOpenRaw && !previewHosted;
+  const workflowOpen = Boolean(props.workflowOpen) && Boolean(props.workflowPanel);
+  // Session workflow always renders in ChatLayout's split slot.
+  // File preview still hoists to the Layout host for project conversations.
+  const showWorkflowPanel = workflowOpen;
+  const showPreviewPanel = isPreviewOpenRaw && !previewHosted && !workflowOpen;
+  const isPreviewOpen = showWorkflowPanel || showPreviewPanel;
   // 最大化（仅桌面）：隐藏聊天区、让内联预览铺满；工作区右栏保持不变。
   // 项目会话的预览被提升到 Layout host（previewHosted），其最大化在 Layout 处理，
   // 这里的 isPreviewOpen 已排除该情况。
@@ -90,7 +98,7 @@ const ChatLayout: React.FC<{
   // the right workspace sider stays unchanged. Project conversations hoist the
   // preview to the Layout host (previewHosted) and handle maximizing there —
   // isPreviewOpen already excludes that case here.
-  const previewMaximized = isDesktop && isPreviewOpen && isMaximized;
+  const previewMaximized = isDesktop && showPreviewPanel && isMaximized;
 
   // --- Hook A: workspace collapse ---
   const { rightSiderCollapsed, setRightSiderCollapsed } = useWorkspaceCollapse({
@@ -281,7 +289,7 @@ const ChatLayout: React.FC<{
                 {props.children}
               </ArcoLayout.Content>
             </div>
-            {/* Preview panel - conditionally rendered */}
+            {/* Preview / session-workflow panel — conditionally rendered */}
             {isPreviewOpen && (
               <div
                 className={classNames(
@@ -319,7 +327,7 @@ const ChatLayout: React.FC<{
                     lineStyle: { width: '2px' },
                   })}
                 <div className={classNames('h-full w-full overflow-hidden', isDesktop ? '' : 'rounded-[15px]')}>
-                  <PreviewPanel />
+                  {showWorkflowPanel ? props.workflowPanel : showPreviewPanel ? <PreviewPanel /> : null}
                 </div>
               </div>
             )}
