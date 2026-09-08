@@ -84,9 +84,17 @@ export function rewriteFlowiseIslandPayload(content: string, contentType: string
       '.VITE_UI_BASE_URL||window.location.origin',
       `.VITE_UI_BASE_URL||(window.location.origin+"${mount}")`
     );
+    // Flowise boots as <Provider store={...}><BrowserRouter>...</BrowserRouter></Provider>.
+    // Vite may emit `jsx` / `jsxs` / `R.jsx` / `/*#__PURE__*/jsx` / `createElement`.
+    // Without basename, RR sees `/canvas-island/v2/agentcanvas/:id` and matches nothing → blank iframe.
+    // Do NOT rewrite Flowise `config.basename` (passed to useRoutes as location) — that blanks the canvas.
     out = out.replace(
-      /,\s*\{store:([A-Za-z_$][\w$]*),children:([A-Za-z_$][\w$]*)\.jsx\(([A-Za-z_$][\w$]*),\{children:/g,
-      `,{store:$1,children:$2.jsx($3,{basename:"${mount}",children:`
+      /,\s*\{store:([A-Za-z_$][\w$]*),children:(?:\/\*#__PURE__\*\/)?((?:[A-Za-z_$][\w$]*\.)?(?:jsxs?|createElement))\(([A-Za-z_$][\w$]*),\{children:/g,
+      `,{store:$1,children:$2($3,{basename:"${mount}",children:`
+    );
+    out = out.replace(
+      /((?:\/\*#__PURE__\*\/)?(?:[A-Za-z_$][\w$]*\.)?(?:jsxs?|createElement))\(BrowserRouter,\{(?!basename:)/g,
+      `$1(BrowserRouter,{basename:"${mount}",`
     );
     out = out.replaceAll('"/assets/', `"${mount}/assets/`);
     out = out.replaceAll("'/assets/", `'${mount}/assets/`);
