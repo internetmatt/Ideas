@@ -784,5 +784,15 @@
     "progress": "{{completed}}/{{total}}",
     "expand": "Planı genişlet",
     "collapse": "Planı daralt"
+  },
+  "workflow": {
+    "canvas": "Canvas",
+    "sessionCanvas": "Session canvas",
+    "toggle": "Toggle session workflow canvas",
+    "reload": "Reload",
+    "openDirect": "Open direct",
+    "statusOnline": "online",
+    "statusOffline": "offline",
+    "statusChecking": "checking"
   }
 }

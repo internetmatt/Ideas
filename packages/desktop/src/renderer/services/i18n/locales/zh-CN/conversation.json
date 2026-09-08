@@ -782,5 +782,15 @@
     "progress": "{{completed}}/{{total}}",
     "expand": "展开计划",
     "collapse": "收起计划"
+  },
+  "workflow": {
+    "canvas": "画布",
+    "sessionCanvas": "会话画布",
+    "toggle": "打开/关闭会话工作流画布",
+    "reload": "重新加载",
+    "openDirect": "直接打开",
+    "statusOnline": "在线",
+    "statusOffline": "离线",
+    "statusChecking": "检测中"
   }
 }

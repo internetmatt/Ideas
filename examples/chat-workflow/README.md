@@ -51,3 +51,14 @@ npx playwright test examples/chat-workflow/e2e/chat-workflow.e2e.ts
 2. Mount this canvas as a `ChatLayout` side panel (same slot as Preview)
 3. Swap the mock runner for Flowise `buildChatflow` / agentflow execution
 4. Ship via WebUI (`bun run webui`) once registry egress is available
+
+## Real fork integration
+
+The production attach points now live in the AionUi desktop package (this Ideas fork):
+
+- Full-page canvas route: `#/flowise` (`packages/desktop/src/renderer/pages/flowise`)
+- Session-bound panel: conversation header **Canvas** toggle → `conversation.extra.session_workflow`
+- Flowise URL resolution: `packages/desktop/src/renderer/services/flowise/resolveFlowiseUrl.ts`
+
+This `examples/chat-workflow` demo remains a zero-dep UX sandbox / snapshot harness.
+
