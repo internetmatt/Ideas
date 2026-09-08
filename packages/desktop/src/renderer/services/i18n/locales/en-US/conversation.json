@@ -789,6 +789,8 @@
     "toggle": "Toggle session workflow canvas",
     "reload": "Reload",
     "openDirect": "Open direct",
+    "selectFlow": "Select flow",
+    "newAgentflow": "New agentflow",
     "statusOnline": "online",
     "statusOffline": "offline",
     "statusChecking": "checking"

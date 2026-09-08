@@ -110,12 +110,21 @@ describe('httpBridge', () => {
     });
 
     it('returns empty string in WebUI mode (window + document, no __backendPort)', () => {
-      vi.stubGlobal('window', {});
+      vi.stubGlobal('window', { location: { pathname: '/', host: '127.0.0.1:3011' } });
       vi.stubGlobal('document', {});
 
       const result = getBaseUrl();
 
       expect(result).toBe('');
+    });
+
+    it('prefixes the cowork mount when Projecto hosts the WebUI', () => {
+      vi.stubGlobal('window', {
+        location: { pathname: '/apps/agent-workspace/cowork/', host: 'localhost:4715' },
+      });
+      vi.stubGlobal('document', {});
+
+      expect(getBaseUrl()).toBe('/apps/agent-workspace/cowork');
     });
   });
 

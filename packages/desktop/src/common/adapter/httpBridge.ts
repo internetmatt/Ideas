@@ -7,6 +7,7 @@
  */
 
 import { refreshSession, WS_CLOSE_POLICY_VIOLATION } from './sessionRefresh';
+import { getWebUiPublicBase } from './webUiPublicBase';
 
 // ---------------------------------------------------------------------------
 // Base URL
@@ -53,9 +54,9 @@ function isWebUiBrowserMode(): boolean {
 
 export function getBaseUrl(): string {
   if (isWebUiBrowserMode()) {
-    // Same-origin: calls like fetch(`${baseUrl}/api/foo`) resolve to `/api/foo`
-    // on whatever host the page was served from.
-    return '';
+    // Same-origin, plus cowork mount when Projecto proxies this UI on :4715.
+    // Empty on raw :3011 so `/#/login` stays on aioncore.
+    return getWebUiPublicBase();
   }
   return `http://127.0.0.1:${getBackendPort()}`;
 }
@@ -63,7 +64,8 @@ export function getBaseUrl(): string {
 function getWsUrl(): string {
   if (isWebUiBrowserMode()) {
     const proto = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-    return `${proto}//${window.location.host}/ws`;
+    const base = getWebUiPublicBase();
+    return `${proto}//${window.location.host}${base}/ws`;
   }
   return `ws://127.0.0.1:${getBackendPort()}/ws`;
 }

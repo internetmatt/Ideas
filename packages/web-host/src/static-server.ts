@@ -24,12 +24,22 @@ import net, { type Socket } from 'node:net';
 import fs from 'node:fs';
 import path from 'node:path';
 import serveHandler from 'serve-handler';
+import {
+  CANVAS_ISLAND_MOUNT,
+  forwardToFlowiseIsland,
+  isCanvasIslandUrl,
+  isFlowiseApiStolenByIdeas,
+  parseFlowiseOrigin,
+  type FlowiseOrigin,
+} from './canvas-island.js';
 
 export type StaticServerOptions = {
   staticDir: string;
   backendPort: number;
   port?: number;
   allowRemote?: boolean;
+  /** OpenIdeas sidecar for `/canvas-island/` (default AIONUI_FLOWISE_URL / :3010). */
+  flowiseOrigin?: FlowiseOrigin;
 };
 
 export type StaticServerHandle = {
@@ -192,6 +202,8 @@ function resolveDevIntegrationsOverride(): Record<string, unknown> | null {
   if (whitelabel) integrations.whitelabel = whitelabel;
   if (cliName) integrations.cliName = cliName;
   if (coreName) integrations.coreName = coreName;
+  integrations.canvasIsland = true;
+  integrations.flowiseUrl = CANVAS_ISLAND_MOUNT;
   return integrations;
 }
 
@@ -273,6 +285,18 @@ export async function startStaticServer(opts: StaticServerOptions): Promise<Stat
     try {
       if (!req.url || !req.method) {
         res.writeHead(400).end();
+        return;
+      }
+
+      const flowiseOrigin = opts.flowiseOrigin ?? parseFlowiseOrigin();
+      // Same-origin OpenIdeas island — before /api so `/canvas-island/api/v1`
+      // does not hit aioncore.
+      if (isCanvasIslandUrl(req.url)) {
+        forwardToFlowiseIsland(req, res, flowiseOrigin);
+        return;
+      }
+      if (isFlowiseApiStolenByIdeas(req.url, typeof req.headers.referer === 'string' ? req.headers.referer : undefined)) {
+        forwardToFlowiseIsland(req, res, flowiseOrigin, req.url);
         return;
       }
 

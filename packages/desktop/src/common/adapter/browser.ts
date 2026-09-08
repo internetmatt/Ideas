@@ -7,6 +7,7 @@
 import { bridge } from '@/common/platform/bridge';
 import { WEBUI_DEFAULT_PORT } from '@/common/config/constants';
 import { refreshSession } from './sessionRefresh';
+import { getWebUiPublicBase } from './webUiPublicBase';
 import type { ElectronBridgeAPI } from '@/common/types/platform/electron';
 
 interface CustomWindow extends Window {
@@ -76,7 +77,7 @@ if (win.electronAPI) {
   // Path must be `/ws` — web-host's static-server only proxies WebSocket upgrades under /ws.
   const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
   const defaultHost = `${window.location.hostname}:${WEBUI_DEFAULT_PORT}`;
-  const socketUrl = `${protocol}//${window.location.host || defaultHost}/ws`;
+  const socketUrl = `${protocol}//${window.location.host || defaultHost}${getWebUiPublicBase()}/ws`;
 
   type QueuedMessage = { name: string; data: unknown };
 

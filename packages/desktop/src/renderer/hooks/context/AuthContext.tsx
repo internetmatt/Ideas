@@ -139,6 +139,22 @@ function userFromProjectoIntegrations(): AuthUser | null {
   };
 }
 
+/**
+ * Host-owned cowork injects `whitelabel: "projecto"` (or ideas + an identity).
+ * Raw :3011 only injects `{ productName, whitelabel: "ideas" }` for chrome —
+ * that is branding, not a Projecto IdP. Those users must keep local /login.
+ */
+export function isProjectoHostedShell(
+  integ: (Window & { __PROJECTO_INTEGRATIONS__?: { whitelabel?: string; identity?: { sub?: string; email?: string } } })['__PROJECTO_INTEGRATIONS__'] = typeof window === 'undefined'
+    ? undefined
+    : window.__PROJECTO_INTEGRATIONS__
+): boolean {
+  if (!integ) return false;
+  if (integ.whitelabel === 'projecto') return true;
+  if (integ.whitelabel === 'ideas' && (integ.identity?.sub || integ.identity?.email)) return true;
+  return false;
+}
+
 export const AuthProvider: React.FC<React.PropsWithChildren> = ({ children }) => {
   const [user, setUser] = useState<AuthUser | null>(null);
   const [status, setStatus] = useState<AuthStatus>('checking');
@@ -148,8 +164,7 @@ export const AuthProvider: React.FC<React.PropsWithChildren> = ({ children }) =>
   const refresh = useCallback(async () => {
     // Host-owned panel (Projecto / Ideas): trust injected JWT before local login.
     const projectoUser = userFromProjectoIntegrations();
-    const hostWhitelabel = window.__PROJECTO_INTEGRATIONS__?.whitelabel;
-    if (projectoUser && (hostWhitelabel === 'projecto' || hostWhitelabel === 'ideas')) {
+    if (projectoUser && isProjectoHostedShell()) {
       setUser(projectoUser);
       setStatus('authenticated');
       setReady(true);
@@ -189,8 +204,8 @@ export const AuthProvider: React.FC<React.PropsWithChildren> = ({ children }) =>
   const login = useCallback(async ({ username, password, remember }: LoginParams): Promise<LoginResult> => {
     try {
       // Under a host shell, local passwords are not the IdP — bounce to host login.
-      const hostWhitelabel = window.__PROJECTO_INTEGRATIONS__?.whitelabel;
-      if (hostWhitelabel === 'projecto' || hostWhitelabel === 'ideas') {
+      // Standalone :3011 must keep Ideas /login (remembered session).
+      if (isProjectoHostedShell()) {
         const returnTo = window.location.href;
         const loginBase =
           (window.__PROJECTO_INTEGRATIONS__ as { projectoLoginUrl?: string })?.projectoLoginUrl ||
