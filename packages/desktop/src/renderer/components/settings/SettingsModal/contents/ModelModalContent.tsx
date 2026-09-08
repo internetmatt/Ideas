@@ -6,10 +6,22 @@
 
 import { ipcBridge } from '@/common';
 import type { IProvider } from '@/common/config/storage';
+import { supportsOpenAiApiMode } from '@/common/utils/modelCapabilities';
 import { Button, Divider, Message, Popconfirm, Collapse, Tag, Switch, Tooltip } from '@arco-design/web-react';
-import { DeleteFour, Info, Minus, Plus, Write, Heartbeat } from '@icon-park/react';
+import {
+  DeleteFour,
+  Heartbeat,
+  Info,
+  Minus,
+  Plus,
+  PreviewClose,
+  PreviewOpen,
+  SettingTwo,
+  Write,
+} from '@icon-park/react';
 import React, { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { formatDateTime } from '@/renderer/services/i18n/format';
 import AddModelModal from '@/renderer/pages/settings/components/AddModelModal';
 import AddPlatformModal from '@/renderer/pages/settings/components/AddPlatformModal';
 import { isNewApiPlatform, NEW_API_PROTOCOL_OPTIONS } from '@/renderer/utils/model/modelPlatforms';
@@ -95,7 +107,7 @@ const isModelEnabled = (platform: IProvider, model: string): boolean => {
 };
 
 const ModelModalContent: React.FC = () => {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const viewMode = useSettingsViewMode();
   const isPageMode = viewMode === 'page';
   const [collapseKey, setCollapseKey] = useState<Record<string, boolean>>({});
@@ -400,7 +412,7 @@ const ModelModalContent: React.FC = () => {
                 href='https://github.com/iOfficeAI/AionUi/wiki/LLM-Configuration'
                 target='_blank'
                 rel='noopener noreferrer'
-                className='text-[rgb(var(--primary-6))] hover:text-[rgb(var(--primary-5))] underline ml-4px'
+                className='text-[rgb(var(--primary-6))] hover:text-[rgb(var(--primary-5))] underline ms-4px'
               >
                 {t('settings.configGuide')}
               </a>
@@ -422,7 +434,7 @@ const ModelModalContent: React.FC = () => {
                   key={key}
                   bordered
                   expandIconPosition='left'
-                  className={`[&_.arco-collapse-item]:!border-0 [&_.arco-collapse-item]:!rounded-12px [&_.arco-collapse-item]:!overflow-hidden [&_.arco-collapse-item]:!bg-[var(--color-bg-2)] [&_.arco-collapse-item-header]:!bg-[var(--fill-0)] [&_.arco-collapse-item-header]:!pl-36px [&_.arco-collapse-item-header]:!pr-12px [&_.arco-collapse-item-header]:!py-8px [&_.arco-collapse-item-header]:transition-colors [&_.arco-collapse-item-header]:hover:!bg-[var(--color-bg-2)] [&_.arco-collapse-item-header]:!gap-8px [&_.arco-collapse-item-header-title]:!min-w-0 [&_.arco-collapse-item-header-icon]:!text-2 [&_.arco-collapse-item-header:hover_.arco-collapse-item-header-icon]:!text-1 [&_.arco-collapse-item-content]:!bg-fill-1 [&_.arco-collapse-item-content-box]:!px-10px [&_.arco-collapse-item-content-box]:!py-8px [&_.arco-collapse-item-content]:!border-t [&_.arco-collapse-item-content]:!border-[var(--color-border-2)] ${
+                  className={`[&_.arco-collapse-item]:!border-0 [&_.arco-collapse-item]:!rounded-12px [&_.arco-collapse-item]:!overflow-hidden [&_.arco-collapse-item]:!bg-[var(--color-bg-2)] [&_.arco-collapse-item-header]:!bg-[var(--fill-0)] [&_.arco-collapse-item-header]:!ps-36px [&_.arco-collapse-item-header]:!pe-12px [&_.arco-collapse-item-header]:!py-8px [&_.arco-collapse-item-header]:transition-colors [&_.arco-collapse-item-header]:hover:!bg-[var(--color-bg-2)] [&_.arco-collapse-item-header]:!gap-8px [&_.arco-collapse-item-header-title]:!min-w-0 [&_.arco-collapse-item-header-icon]:!text-2 [&_.arco-collapse-item-header:hover_.arco-collapse-item-header-icon]:!text-1 [&_.arco-collapse-item-content]:!bg-fill-1 [&_.arco-collapse-item-content-box]:!px-10px [&_.arco-collapse-item-content-box]:!py-8px [&_.arco-collapse-item-content]:!border-t [&_.arco-collapse-item-content]:!border-[var(--color-border-2)] ${
                     isExpanded
                       ? '[&_.arco-collapse-item-header]:!rounded-t-12px [&_.arco-collapse-item-header]:!rounded-b-0 [&_.arco-collapse-item-content]:!rounded-b-12px'
                       : '[&_.arco-collapse-item-header]:!rounded-12px'
@@ -502,13 +514,16 @@ const ModelModalContent: React.FC = () => {
                     {(platform.models ?? []).map((model: string, index: number, arr: string[]) => {
                       const isNewApiProvider = isNewApiPlatform(platform.platform);
                       const modelProtocol = platform.model_protocols?.[model] || 'openai';
+                      const modelSettings = platform.model_settings?.[model];
+                      const imageInput = modelSettings?.image_input ?? 'auto';
+                      const showOpenAiApiMode = supportsOpenAiApiMode(platform.platform, modelProtocol);
                       const model_health = platform.model_health?.[model];
                       const healthStatus = model_health?.status || 'unknown';
 
                       return (
                         <div key={model}>
-                          <div className='flex items-center justify-between px-8px py-12px transition-colors hover:bg-[var(--fill-0)]'>
-                            <div className='flex items-center gap-8px'>
+                          <div className='flex items-center justify-between gap-8px px-8px py-12px transition-colors hover:bg-[var(--fill-0)]'>
+                            <div className='flex min-w-0 flex-1 items-center gap-8px'>
                               {/* 健康状态指示器 / Health status indicator */}
                               {healthStatus !== 'unknown' && (
                                 <Tooltip
@@ -530,26 +545,26 @@ const ModelModalContent: React.FC = () => {
                                       )}
                                       {model_health?.last_check && (
                                         <div className='text-12px mt-4px'>
-                                          {t('mcp.lastCheck')}: {new Date(model_health.last_check).toLocaleString()}
+                                          {t('mcp.lastCheck')}: {formatDateTime(model_health.last_check, i18n.language)}
                                         </div>
                                       )}
                                     </div>
                                   }
                                 >
                                   <div
-                                    className={`w-8px h-8px rounded-full ${healthStatus === 'healthy' ? 'bg-green-500' : 'bg-red-500'}`}
+                                    className={`h-8px w-8px shrink-0 rounded-full ${healthStatus === 'healthy' ? 'bg-green-500' : 'bg-red-500'}`}
                                   />
                                 </Tooltip>
                               )}
 
-                              <span className='text-14px text-t-primary'>{model}</span>
+                              <span className='min-w-0 flex-1 truncate text-14px text-t-primary'>{model}</span>
 
                               {/* New API 协议标签（点击循环切换）/ New API protocol badge (click to cycle) */}
                               {isNewApiProvider && (
                                 <Tag
                                   size='small'
                                   color={getProtocolColor(modelProtocol)}
-                                  className='cursor-pointer select-none'
+                                  className='shrink-0 cursor-pointer select-none'
                                   onClick={() => {
                                     const nextProtocol = getNextProtocol(modelProtocol);
                                     const newProtocols = { ...platform.model_protocols };
@@ -561,8 +576,41 @@ const ModelModalContent: React.FC = () => {
                                 </Tag>
                               )}
 
+                              <Tooltip
+                                content={
+                                  imageInput === 'supported'
+                                    ? t('settings.imageInputSupported')
+                                    : imageInput === 'unsupported'
+                                      ? t('settings.imageInputUnsupported')
+                                      : t('settings.imageInputAuto')
+                                }
+                              >
+                                <span
+                                  className={`inline-flex h-20px w-20px shrink-0 items-center justify-center ${
+                                    imageInput === 'supported' ? 'text-success-6' : 'text-t-secondary'
+                                  }`}
+                                >
+                                  {imageInput !== 'unsupported' ? (
+                                    <PreviewOpen theme='outline' size='15' />
+                                  ) : (
+                                    <PreviewClose theme='outline' size='15' />
+                                  )}
+                                </span>
+                              </Tooltip>
+
+                              {showOpenAiApiMode && (
+                                <Tag size='small' className='hidden shrink-0 md:inline-flex'>
+                                  {modelSettings?.openai_api_mode === 'responses'
+                                    ? t('settings.openAiApiModeResponses')
+                                    : modelSettings?.openai_api_mode === 'chat_completions'
+                                      ? t('settings.openAiApiModeChatCompletions')
+                                      : t('settings.openAiApiModeAuto')}
+                                </Tag>
+                              )}
+
                               {/* 模型启用开关 / Model enable switch */}
                               <Switch
+                                className='shrink-0'
                                 size='small'
                                 checked={isModelEnabled(platform, model)}
                                 onChange={(checked) => toggleModelEnabled(platform, model, checked)}
@@ -570,6 +618,15 @@ const ModelModalContent: React.FC = () => {
                             </div>
 
                             <div className='flex items-center gap-6px shrink-0'>
+                              <Tooltip content={t('settings.configureModel')}>
+                                <Button
+                                  size='mini'
+                                  className='!w-28px !h-28px !min-w-28px !bg-[var(--color-bg-1)] text-t-secondary hover:text-t-primary hover:!bg-[var(--fill-0)]'
+                                  icon={<SettingTwo theme='outline' size='16' />}
+                                  onClick={() => addModelModalCtrl.open({ data: platform, model })}
+                                />
+                              </Tooltip>
+
                               {/* 心跳检测按钮 / Health check button */}
                               <Tooltip content={t('settings.healthCheck')}>
                                 <Button
@@ -590,9 +647,11 @@ const ModelModalContent: React.FC = () => {
                                   const newProtocols = { ...platform.model_protocols };
                                   const newModelEnabled = { ...platform.model_enabled };
                                   const newModelHealth = { ...platform.model_health };
+                                  const newModelSettings = { ...platform.model_settings };
                                   delete newProtocols[model];
                                   delete newModelEnabled[model];
                                   delete newModelHealth[model];
+                                  delete newModelSettings[model];
 
                                   updatePlatform(
                                     {
@@ -602,6 +661,7 @@ const ModelModalContent: React.FC = () => {
                                       model_enabled:
                                         Object.keys(newModelEnabled).length > 0 ? newModelEnabled : undefined,
                                       model_health: Object.keys(newModelHealth).length > 0 ? newModelHealth : undefined,
+                                      model_settings: newModelSettings,
                                     },
                                     () => {}
                                   );

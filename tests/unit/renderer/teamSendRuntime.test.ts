@@ -1,11 +1,17 @@
 import { describe, expect, it, vi } from 'vitest';
 import type { ITeamSlotWork, TeamSlotBlockedReason } from '@/common/types/team/teamTypes';
 import {
+  buildTeamRetryStartHandler,
   buildTeamSendRuntime,
   buildTeamStopHandler,
   buildTeamWorkStatusText,
 } from '@/renderer/pages/team/components/teamSendRuntime';
 import type { TeamRunViewState } from '@/renderer/pages/team/hooks/useTeamRunView';
+import { ipcBridge } from '@/common';
+
+vi.mock('@/common', () => ({
+  ipcBridge: { team: { attachAgent: { invoke: vi.fn(() => Promise.resolve()) } } },
+}));
 
 const work = (overrides: Partial<ITeamSlotWork> = {}): ITeamSlotWork => ({
   slot_id: 'lead',
@@ -23,7 +29,7 @@ const work = (overrides: Partial<ITeamSlotWork> = {}): ITeamSlotWork => ({
   ...overrides,
 });
 
-const view = (slotWork?: ITeamSlotWork): TeamRunViewState => ({
+const view = (slotWork?: ITeamSlotWork, sessionStopped = false): TeamRunViewState => ({
   activeRun: {
     team_id: 'team-1',
     team_run_id: 'run-1',
@@ -40,6 +46,7 @@ const view = (slotWork?: ITeamSlotWork): TeamRunViewState => ({
   },
   childTurnsBySlot: {},
   slotWorkBySlot: slotWork ? { [slotWork.slot_id]: slotWork } : {},
+  sessionStopped,
 });
 
 describe('buildTeamSendRuntime', () => {
@@ -82,6 +89,18 @@ describe('buildTeamSendRuntime', () => {
     expect(runtime.runtimeGate.canSendMessage).toBe(true);
   });
 
+  it('does not show paused queued work as processing', () => {
+    const slotWork = work({
+      state: 'paused',
+      queued_foreground_count: 2,
+      queued_background_count: 3,
+    });
+    const runtime = buildTeamSendRuntime({ slot_id: 'lead', runView: view(slotWork) });
+
+    expect(runtime.loading).toBe(false);
+    expect(runtime.queuedCount).toBe(5);
+  });
+
   it('allows sending while RuntimeStarting is blocked', () => {
     const runtime = buildTeamSendRuntime({
       slot_id: 'lead',
@@ -94,7 +113,7 @@ describe('buildTeamSendRuntime', () => {
     expect(runtime.runtimeGate.canSendMessage).toBe(true);
   });
 
-  it.each<TeamSlotBlockedReason>(['runtime_failed', 'removing', 'session_stopped'])(
+  it.each<TeamSlotBlockedReason>(['runtime_failed', 'removing'])(
     'blocks sending for fatal reason %s',
     (blocked_reason) => {
       const runtime = buildTeamSendRuntime({
@@ -108,6 +127,62 @@ describe('buildTeamSendRuntime', () => {
       expect(runtime.statusText).toBe(blocked_reason);
     }
   );
+
+  it('keeps sending open for a stale session_stopped slot (recoverable, not fatal)', () => {
+    const runtime = buildTeamSendRuntime({
+      slot_id: 'lead',
+      runView: view(work({ state: 'blocked', blocked_reason: 'session_stopped' })),
+      statusText: 'session stopped',
+    });
+
+    expect(runtime.runtimeGate.canSendMessage).toBe(true);
+    expect(runtime.statusText).toBe('session stopped');
+  });
+
+  it('forces the recoverable-stopped shape when sessionStopped is set', () => {
+    const runtime = buildTeamSendRuntime({
+      slot_id: 'lead',
+      runView: view(work({ state: 'running', active_turn_id: 'turn-1' }), true),
+      statusText: 'The team session has stopped.',
+      sessionStopped: true,
+    });
+
+    expect(runtime.runtimeGate.canSendMessage).toBe(true);
+    expect(runtime.loading).toBe(false);
+    expect(runtime.statusText).toBe('The team session has stopped.');
+  });
+
+  it('overrides a residual fatal block when sessionStopped is set', () => {
+    const runtime = buildTeamSendRuntime({
+      slot_id: 'lead',
+      runView: view(work({ state: 'blocked', blocked_reason: 'runtime_failed' }), true),
+      statusText: 'The team session has stopped.',
+      sessionStopped: true,
+    });
+
+    expect(runtime.runtimeGate.canSendMessage).toBe(true);
+    expect(runtime.loading).toBe(false);
+  });
+
+  it('exposes the active turn start timestamp from slot work', () => {
+    const slotWork = work({ state: 'running', active_turn_id: 'turn-1', active_turn_started_at_ms: 1_700_000_000_000 });
+    const runtime = buildTeamSendRuntime({ slot_id: 'lead', runView: view(slotWork) });
+
+    expect(runtime.startedAtMs).toBe(1_700_000_000_000);
+  });
+
+  it('normalizes a null start timestamp to null', () => {
+    const slotWork = work({ state: 'running', active_turn_id: 'turn-1', active_turn_started_at_ms: null });
+    const runtime = buildTeamSendRuntime({ slot_id: 'lead', runView: view(slotWork) });
+
+    expect(runtime.startedAtMs).toBeNull();
+  });
+
+  it('returns a null start timestamp when the slot has no work', () => {
+    const runtime = buildTeamSendRuntime({ slot_id: 'missing', runView: view() });
+
+    expect(runtime.startedAtMs).toBeNull();
+  });
 });
 
 describe('buildTeamWorkStatusText', () => {
@@ -134,6 +209,10 @@ describe('buildTeamWorkStatusText', () => {
   it('hides queued count while work has not started yet', () => {
     expect(text(work({ state: 'queued', queued_foreground_count: 2 }))).toBe('processing');
   });
+
+  it('does not label paused queued work as processing', () => {
+    expect(text(work({ state: 'paused', queued_background_count: 2 }))).toBeUndefined();
+  });
 });
 
 describe('buildTeamStopHandler', () => {
@@ -155,5 +234,33 @@ describe('buildTeamStopHandler', () => {
       slot_id: 'lead',
       reason: 'user_stop',
     });
+  });
+
+  it('converges locally before reconciling after a successful stop', async () => {
+    const pauseSlotWork = vi.fn(async () => {});
+    const onStopSucceeded = vi.fn();
+    const onRunStateStale = vi.fn(async () => 'applied' as const);
+    const handler = buildTeamStopHandler({
+      team_id: 'team-1',
+      slot_id: 'lead',
+      runView: view(work({ state: 'running', active_turn_id: 'turn-1' })),
+      pauseSlotWork,
+      onStopSucceeded,
+      onRunStateStale,
+    });
+
+    await handler();
+
+    expect(onStopSucceeded).toHaveBeenCalledOnce();
+    expect(onRunStateStale).toHaveBeenCalledOnce();
+  });
+});
+
+describe('buildTeamRetryStartHandler', () => {
+  it('invokes the directed per-member attach route (not warmupSession)', async () => {
+    const invoke = vi.mocked(ipcBridge.team.attachAgent.invoke);
+    invoke.mockClear();
+    await buildTeamRetryStartHandler({ team_id: 't1', slot_id: 's2' })();
+    expect(invoke).toHaveBeenCalledWith({ team_id: 't1', slot_id: 's2' });
   });
 });
