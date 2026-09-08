@@ -1,5 +1,8 @@
+# appId and executableName stay on the upstream identity on purpose: appId is
+# the OS-level application identity, so changing it makes the OS treat this as
+# a different app — breaking auto-update and orphaning existing user data.
 appId: com.aionui.app
-productName: AionUi
+productName: Ideas
 executableName: AionUi
 copyright: Copyright © 2024 AionUi
 

@@ -12,6 +12,7 @@ import { configService } from '@/common/config/configService';
 import { isElectronDesktop } from '@/renderer/utils/platform';
 import { getSnapshotConversationName } from '@/renderer/pages/conversation/GroupedHistory/hooks/useConversationListSync';
 import {
+import { PRODUCT_NAME } from '@/common/branding';
   createBrowserNotificationController,
   shouldShowNotification,
   truncateConversationName,
@@ -63,7 +64,7 @@ export const useBrowserNotification = (): void => {
       },
       show: ({ body, conversationId }) => {
         try {
-          const notification = new Notification('AionUi', { body });
+          const notification = new Notification(PRODUCT_NAME, { body });
           notification.onclick = () => {
             window.focus();
             if (conversationId) void navigate(`/conversation/${conversationId}`);
