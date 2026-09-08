@@ -51,7 +51,7 @@ export type StaticServerHandle = {
   stop: () => Promise<void>;
 };
 
-const DEFAULT_PORT = 25808;
+const DEFAULT_PORT = 3011;
 
 // Ranges that are non-internal IPv4 yet never a reachable LAN address, so we
 // must never advertise them as the WebUI access URL even when they are the only

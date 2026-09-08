@@ -110,9 +110,8 @@ function resolveWebUIProbePort(): number {
   if (cli && /^\d+$/.test(cli)) return Number(cli);
   const env = process.env.AIONUI_PORT ?? process.env.PORT;
   if (env && /^\d+$/.test(env)) return Number(env);
-  if (process.env.NODE_ENV === 'production') return 25808;
-  if (process.env.AIONUI_MULTI_INSTANCE === '1') return 25810;
-  return 25809;
+  if (process.env.AIONUI_MULTI_INSTANCE === '1') return 3012;
+  return 3011;
 }
 
 /**

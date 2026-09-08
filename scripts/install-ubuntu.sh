@@ -215,7 +215,7 @@ start() {
         echo "✅ AionUi 啟動成功 (PID: $(cat "$PIDFILE"))"
         local ip
         ip=$(hostname -I 2>/dev/null | awk '{print $1}')
-        echo "🌐 WebUI: http://${ip:-localhost}:25808"
+        echo "🌐 WebUI: http://${ip:-localhost}:3011"
     else
         echo "❌ AionUi 啟動失敗，請查看日誌: $LOGFILE"
         rm -f "$PIDFILE"
@@ -248,7 +248,7 @@ restart() {
 status() {
     if [ -f "$PIDFILE" ] && kill -0 "$(cat "$PIDFILE")" 2>/dev/null; then
         echo "✅ AionUi 執行中 (PID: $(cat "$PIDFILE"))"
-        ss -tlnp 2>/dev/null | grep 25808 || netstat -tlnp 2>/dev/null | grep 25808 || true
+        ss -tlnp 2>/dev/null | grep 3011 || netstat -tlnp 2>/dev/null | grep 3011 || true
     else
         echo "⚠️  AionUi 未在執行"
         rm -f "$PIDFILE" 2>/dev/null
@@ -381,7 +381,7 @@ print_summary() {
             echo "    sudo systemctl enable aionui  # 開機自啟"
             echo ""
         fi
-        echo "    # WebUI 預設監聽 http://localhost:25808"
+        echo "    # WebUI 預設監聽 http://localhost:3011"
         echo ""
     else
         echo -e "  ${BOLD}🖥️  桌面模式使用方式:${NC}"
@@ -400,7 +400,7 @@ print_summary() {
     if [[ "${MODE}" == "headless" ]]; then
         echo -e "  ${YELLOW}💡 提示:${NC}"
         echo "     • 設定工作目錄: export AIONUI_WORKDIR=/path/to/workspace"
-        echo "     • 遠端存取方式: SSH 隧道 / ngrok / 直接開放 25808 端口"
+        echo "     • 遠端存取方式: SSH 隧道 / ngrok / 直接開放 3011 端口"
         echo "     • 詳細指南: docs/guides/deploy-server.md"
         echo ""
     fi
