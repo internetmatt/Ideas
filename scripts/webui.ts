@@ -8,7 +8,7 @@
  * starting Electron. Replaces the former `electron-vite dev -- --webui` flow.
  *
  * Env vars:
- *   AIONUI_PORT           : static server port (default 33000)
+ *   AIONUI_PORT           : static server port (default 3011 for Ideas)
  *   AIONUI_HOST           : listen host; set to 0.0.0.0 to imply --remote
  *   AIONUI_ALLOW_REMOTE   : "1"/"true" to expose to LAN
  *   AIONUI_DATA_DIR       : override userData path (default Electron-compatible)
@@ -55,9 +55,8 @@ import { openBrowserUrl, shouldAutoOpenBrowser } from '../packages/web-cli/src/b
 
 // Aligned with packages/desktop/src/common/config/constants.ts WEBUI_DEFAULT_PORT.
 const DEFAULT_PORT = (() => {
-  if (process.env.NODE_ENV === 'production') return 25808;
-  if (process.env.AIONUI_MULTI_INSTANCE === '1') return 25810;
-  return 25809;
+  if (process.env.AIONUI_MULTI_INSTANCE === '1') return 3012;
+  return 3011;
 })();
 const BACKEND_BINARY = process.platform === 'win32' ? 'aioncore.exe' : 'aioncore';
 

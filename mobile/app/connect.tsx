@@ -18,7 +18,7 @@ function parseQrLoginUrl(data: string): { host: string; port: string; qrToken: s
     if (!qrToken) return null;
     return {
       host: url.hostname,
-      port: url.port || '25808',
+      port: url.port || '3011',
       qrToken,
     };
   } catch {

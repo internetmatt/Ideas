@@ -50,7 +50,7 @@ const isPackaged = (() => {
 })();
 
 const BACKEND_BINARY = process.platform === 'win32' ? 'aioncore.exe' : 'aioncore';
-const DEFAULT_PORT = 25808;
+const DEFAULT_PORT = 3011;
 const RESET_COMMAND = isPackaged ? 'aionui-web resetpass' : 'bun run resetpass';
 
 let currentHandle: WebHostHandle | StaticServerHandle | null = null;

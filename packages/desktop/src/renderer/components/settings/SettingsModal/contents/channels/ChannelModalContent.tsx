@@ -620,7 +620,7 @@ const ChannelModalContent: React.FC = () => {
       const callbackPath = '/ext-wecom-bot/webhook';
       const localCallbackUrl = webuiStatus?.localUrl
         ? `${webuiStatus.localUrl}${callbackPath}`
-        : `http://localhost:25808${callbackPath}`;
+        : `http://localhost:3011${callbackPath}`;
       const lanCallbackUrl = webuiStatus?.networkUrl ? `${webuiStatus.networkUrl}${callbackPath}` : null;
       const publicBaseUrl =
         typeof values.publicBaseUrl === 'string' ? values.publicBaseUrl.trim().replace(/\/+$/, '') : '';
