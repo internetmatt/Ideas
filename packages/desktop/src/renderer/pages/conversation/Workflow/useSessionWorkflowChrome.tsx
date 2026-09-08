@@ -42,7 +42,7 @@ export function useSessionWorkflowChrome(conversation: TChatConversation | undef
           extra: {
             ...(conversation.extra as Record<string, unknown>),
             session_workflow: next ?? undefined,
-          },
+          } as TChatConversation['extra'],
         },
         merge_extra: true,
       });
