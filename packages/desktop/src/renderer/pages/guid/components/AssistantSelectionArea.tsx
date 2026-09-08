@@ -17,6 +17,7 @@ import { resolveAssistantAvatar } from '@/renderer/utils/model/assistantAvatar';
 import ThemedLogo from '@/renderer/components/agent/ThemedLogo';
 import { selectableAssistants } from '@/renderer/utils/model/assistantSelection';
 import { useTranslation } from 'react-i18next';
+import { brandDataString } from '@renderer/services/whitelabel';
 
 /**
  * Mirrors the Agent settings search: matches the assistant's own name and
@@ -224,7 +225,7 @@ const AssistantSelectionArea: React.FC<AssistantSelectionAreaProps> = ({
   const renderAssistantPill = (assistant: Assistant, testId: string, fullWidth = false) => {
     const avatar = resolveAssistantAvatar(assistant.avatar);
     const isSelected = selectedId === assistant.id;
-    const label = assistant.name_i18n?.[localeKey] || assistant.name;
+    const label = brandDataString(assistant.name_i18n?.[localeKey] || assistant.name);
 
     return (
       <Button

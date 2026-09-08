@@ -21,8 +21,6 @@ export type FlowiseIntegrations = {
 declare global {
   interface Window {
     __IDEAS_INTEGRATIONS__?: FlowiseIntegrations;
-    /** @deprecated Prefer __IDEAS_INTEGRATIONS__; kept for Projecto hosts. */
-    __PROJECTO_INTEGRATIONS__?: FlowiseIntegrations;
   }
 }
 

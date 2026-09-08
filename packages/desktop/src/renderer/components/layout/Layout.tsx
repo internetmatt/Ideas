@@ -5,6 +5,7 @@
  */
 
 import { ipcBridge } from '@/common';
+import { PRODUCT_NAME } from '@/common/branding';
 import { TEAM_MODE_ENABLED } from '@/common/config/constants';
 import PwaPullToRefresh from '@/renderer/components/layout/PwaPullToRefresh';
 import Titlebar from '@/renderer/components/layout/Titlebar';
@@ -39,6 +40,7 @@ import { isElectronDesktop } from '@renderer/utils/platform';
 import { IS_DISCONTINUED_BUILD } from '@/renderer/utils/discontinuedBuild';
 import UpdateMigrationDialog from '@/renderer/components/settings/UpdateMigrationDialog';
 import '@renderer/styles/layout.css';
+import { resolveBrandProductName } from '@renderer/services/whitelabel';
 
 const SidebarIcon: React.FC<{ size?: number; strokeWidth?: number }> = ({ size = 18, strokeWidth = 4 }) => (
   <svg
@@ -144,6 +146,9 @@ const Layout: React.FC<{
     return () => setGlobalNavigate(null);
   }, [navigate]);
   const { t } = useTranslation();
+  // Wordmark follows the injected brand (AIONUI_PRODUCT_NAME) so a
+  // whitelabeled host does not show the upstream name in its chrome.
+  const brandName = resolveBrandProductName(PRODUCT_NAME);
   // The "AionUi" wordmark acts as Home / Back-to-Chat, but only from settings routes.
   // In non-settings routes the user is already "home", so it is a no-op (and not actionable).
   const isSettingsRoute = location.pathname.startsWith('/settings');
@@ -442,11 +447,11 @@ const Layout: React.FC<{
                         }
                       }}
                     >
-                      AionUi
+                      {brandName}
                     </div>
                   </Tooltip>
                 ) : (
-                  <div className='text-16px text-t-primary collapsed-hidden font-semibold'>AionUi</div>
+                  <div className='text-16px text-t-primary collapsed-hidden font-semibold'>{brandName}</div>
                 )}
                 {isMobile && !collapsed && (
                   <button

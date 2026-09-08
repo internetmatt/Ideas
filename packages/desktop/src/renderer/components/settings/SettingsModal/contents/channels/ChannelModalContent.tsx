@@ -25,6 +25,7 @@ import SlackConfigForm from './SlackConfigForm';
 import TelegramConfigForm from './TelegramConfigForm';
 import WeixinConfigForm from './WeixinConfigForm';
 import WecomConfigForm from './WecomConfigForm';
+import { applyWhitelabelAllowlist, getWhitelabelProfile } from '@renderer/services/whitelabel';
 
 type ChannelSettingsPlatform = 'telegram' | 'slack' | 'discord' | 'lark' | 'dingtalk' | 'weixin' | 'wecom';
 
@@ -883,7 +884,7 @@ const ChannelModalContent: React.FC = () => {
         content: renderExtensionConfigForm(status),
       }));
 
-    return [
+    const allChannels: ChannelConfig[] = [
       telegramChannel,
       slackChannel,
       discordChannel,
@@ -893,6 +894,9 @@ const ChannelModalContent: React.FC = () => {
       wecomChannel,
       ...extensionChannels,
     ];
+
+    // Narrowed for branded builds — see @renderer/services/whitelabel.
+    return applyWhitelabelAllowlist(allChannels, getWhitelabelProfile().channels, (channel) => String(channel.id));
   }, [
     pluginStatus,
     slackPluginStatus,

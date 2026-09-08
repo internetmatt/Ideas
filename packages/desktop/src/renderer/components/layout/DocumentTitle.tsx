@@ -8,6 +8,7 @@ import React, { useEffect } from 'react';
 import { useLocation } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { PRODUCT_NAME } from '@/common/branding';
+import { resolveBrandProductName } from '@renderer/services/whitelabel';
 
 /**
  * Single owner of `document.title`.
@@ -19,7 +20,7 @@ import { PRODUCT_NAME } from '@/common/branding';
  * navigation and language switches.
  */
 export function titleForPath(pathname: string, t: (key: string) => string): string {
-  return pathname.startsWith('/login') ? t('login.pageTitle') : PRODUCT_NAME;
+  return pathname.startsWith('/login') ? t('login.pageTitle') : resolveBrandProductName(PRODUCT_NAME);
 }
 
 const DocumentTitle: React.FC = () => {

@@ -72,25 +72,28 @@ describe('describeUncaughtError', () => {
   });
 
   it('never copies non-allow-listed properties out of a rejection object', () => {
+    const leakedField = 'example-redacted-value';
+    const leakedPassword = 'example-password';
     const reason = {
       message: 'request failed',
       code: 'EAUTH',
-      token: 'super-secret-token',
-      body: { password: 'hunter2' },
+      token: leakedField,
+      body: { password: leakedPassword },
     };
 
     const diagnostics = describeUncaughtError(reason, 'unhandledRejection');
 
     expect(Object.keys(diagnostics).toSorted()).toEqual(['code', 'message', 'name', 'origin', 'valueType']);
-    expect(JSON.stringify(diagnostics)).not.toContain('super-secret-token');
-    expect(JSON.stringify(diagnostics)).not.toContain('hunter2');
+    expect(JSON.stringify(diagnostics)).not.toContain(leakedField);
+    expect(JSON.stringify(diagnostics)).not.toContain(leakedPassword);
   });
 
   it('does not reveal the payload of an object without a message', () => {
-    const diagnostics = describeUncaughtError({ token: 'super-secret-token' }, 'unhandledRejection');
+    const leakedField = 'example-redacted-value';
+    const diagnostics = describeUncaughtError({ token: leakedField }, 'unhandledRejection');
 
     expect(diagnostics.message).toBe('[object Object]');
-    expect(JSON.stringify(diagnostics)).not.toContain('super-secret-token');
+    expect(JSON.stringify(diagnostics)).not.toContain(leakedField);
   });
 
   it('handles null and undefined rejections', () => {

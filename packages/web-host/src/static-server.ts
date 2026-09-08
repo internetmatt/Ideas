@@ -8,11 +8,21 @@
  * TCP level; /api/stt/stream is the STT streaming endpoint.
  *
  * Design: Node native http + serve-handler. No Express. No business routes.
+ *
+ * Local branding override: standalone `bun run webui[:prod]` never sits behind
+ * the Projecto proxy that normally injects `window.__PROJECTO_INTEGRATIONS__`
+ * before the renderer boots (see packages/desktop/src/renderer/services/
+ * whitelabel.ts). Setting `AIONUI_PRODUCT_NAME` (and optionally
+ * `AIONUI_WHITELABEL`) rewrites the served index.html on the fly so the same
+ * `resolveBrandProductName()` codepath picks it up — no Projecto backend
+ * required, just for local verification/demoing on whatever port webui runs on.
  */
 
 import http, { type IncomingMessage, type Server, type ServerResponse } from 'node:http';
 import { networkInterfaces } from 'node:os';
 import net, { type Socket } from 'node:net';
+import fs from 'node:fs';
+import path from 'node:path';
 import serveHandler from 'serve-handler';
 
 export type StaticServerOptions = {
@@ -159,6 +169,88 @@ function peekWsRoute(buf: Buffer): boolean | null {
   return /^GET\s+\/(?:ws|api\/stt\/stream)(?:\?[^\s]*)?\s+HTTP\/1\.[01]\r?$/.test(firstLine);
 }
 
+/**
+ * Env-sourced stand-in for what the Projecto proxy would normally inject.
+ * `null` when neither var is set, so the hot path below is a no-op and
+ * behavior is byte-for-byte identical to before this feature existed.
+ */
+function resolveDevIntegrationsOverride(): Record<string, unknown> | null {
+  const productName = process.env.AIONUI_PRODUCT_NAME?.trim();
+  const whitelabel = process.env.AIONUI_WHITELABEL?.trim();
+  // The CLI and the core binary are separately brandable: they are distinct
+  // products, not the app name reused. AIONUI_CLI_NAME / AIONUI_CORE_NAME
+  // stand in for what the Projecto proxy injects.
+  const cliName = process.env.AIONUI_CLI_NAME?.trim();
+  const coreName = process.env.AIONUI_CORE_NAME?.trim();
+  if (!productName && !whitelabel && !cliName && !coreName) return null;
+  const integrations: Record<string, unknown> = {};
+  if (productName) integrations.productName = productName;
+  if (whitelabel) integrations.whitelabel = whitelabel;
+  if (cliName) integrations.cliName = cliName;
+  if (coreName) integrations.coreName = coreName;
+  return integrations;
+}
+
+/** `JSON.stringify` output embedded in a `<script>` tag must not contain a raw `</`. */
+function toInlineScriptJson(value: unknown): string {
+  return JSON.stringify(value).replace(/<\//g, '<\\/');
+}
+
+function escapeHtml(value: string): string {
+  return value.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+
+/**
+ * `true` for `/` and any path serve-handler's `**` -> `/index.html` rewrite
+ * would resolve to an SPA route (i.e. no real file exists at that path under
+ * `staticDir`). Mirrors that rewrite so injection and normal static serving
+ * never disagree about which requests represent "the app shell".
+ */
+function isIndexHtmlRequest(staticDir: string, url: string): boolean {
+  const pathname = url.split('?')[0].split('#')[0];
+  if (pathname === '/' || pathname === '/index.html') return true;
+  let decoded: string;
+  try {
+    decoded = decodeURIComponent(pathname);
+  } catch {
+    return false;
+  }
+  const resolvedStaticDir = path.resolve(staticDir);
+  const candidate = path.join(resolvedStaticDir, decoded);
+  if (!candidate.startsWith(resolvedStaticDir)) return false; // path traversal guard
+  try {
+    return fs.statSync(candidate).isDirectory();
+  } catch {
+    return true; // no file at that path -> SPA fallback territory
+  }
+}
+
+/**
+ * Reads `staticDir/index.html` and injects `window.__PROJECTO_INTEGRATIONS__`
+ * (and rewrites `<title>`) when `integrations` is non-null. Returns `null` if
+ * index.html doesn't exist so the caller can fall through to serve-handler's
+ * normal 404 handling instead of masking a real "renderer not built" error.
+ */
+function renderIndexHtmlWithOverride(staticDir: string, integrations: Record<string, unknown> | null): string | null {
+  const indexPath = path.join(staticDir, 'index.html');
+  let html: string;
+  try {
+    html = fs.readFileSync(indexPath, 'utf-8');
+  } catch {
+    return null;
+  }
+  if (!integrations) return html;
+
+  const script = `<script>window.__PROJECTO_INTEGRATIONS__=${toInlineScriptJson(integrations)};</script>`;
+  html = html.includes('</head>') ? html.replace('</head>', `${script}\n  </head>`) : script + html;
+
+  const productName = integrations.productName;
+  if (typeof productName === 'string' && productName.length > 0) {
+    html = html.replace(/<title>[^<]*<\/title>/, `<title>${escapeHtml(productName)}</title>`);
+  }
+  return html;
+}
+
 export async function startStaticServer(opts: StaticServerOptions): Promise<StaticServerHandle> {
   const port = opts.port ?? DEFAULT_PORT;
   const allowRemote = opts.allowRemote === true;
@@ -186,6 +278,21 @@ export async function startStaticServer(opts: StaticServerOptions): Promise<Stat
       if (req.url.startsWith('/api/') || req.url.startsWith('/api?') || req.url === '/login' || req.url === '/logout') {
         forwardToBackend(req, res, opts.backendPort);
         return;
+      }
+
+      // Local branding override (AIONUI_PRODUCT_NAME / AIONUI_WHITELABEL): only
+      // takes the injection path for requests that would resolve to the SPA
+      // shell, and only when the override env vars are actually set — every
+      // other request (real static assets) still goes through serve-handler
+      // unchanged.
+      const devIntegrations = resolveDevIntegrationsOverride();
+      if (devIntegrations && isIndexHtmlRequest(opts.staticDir, req.url)) {
+        const html = renderIndexHtmlWithOverride(opts.staticDir, devIntegrations);
+        if (html !== null) {
+          res.writeHead(200, { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-store' });
+          res.end(html);
+          return;
+        }
       }
 
       // static files + SPA fallback

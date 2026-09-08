@@ -1,5 +1,7 @@
-import i18n from 'i18next';
+import i18n, { type PostProcessorModule } from 'i18next';
 import { initReactI18next } from 'react-i18next';
+
+import { isUpstreamBrand, resolveBrandNames, UPSTREAM_BRAND } from '@renderer/services/whitelabel';
 
 import { configService } from '@/common/config/configService';
 import { ipcBridge } from '@/common';
@@ -124,9 +126,40 @@ if (initialLanguage !== DEFAULT_LANGUAGE) {
 // and fall back to navigator.language, causing a language mismatch (Issue #1176).
 // Instead, we use localStorage and Electron's injected local config language
 // only as hints for the initial render, then let configService be the source of truth.
+/**
+ * Rewrites upstream brand tokens in translated strings. The names are baked
+ * into ~11 locale files in hundreds of places, so whitelabeling by editing
+ * translations is unmaintainable and drifts the moment upstream adds a
+ * string. One post-processor covers every language, including future strings.
+ *
+ * Three distinct tokens, longest-first so "Aion CLI" and "AionCore" are
+ * matched before the bare "AionUi"/"Aion" prefix can claim them:
+ *
+ *   Aion CLI -> brand.cli       the command-line product
+ *   AionCore -> brand.core      the shipped core binary
+ *   AionUi   -> brand.product   the app / web UI
+ *
+ * A no-op when nothing is rebranded, so upstream builds are byte identical.
+ */
+const brandPostProcessor: PostProcessorModule = {
+  type: 'postProcessor',
+  name: 'brand',
+  process(value: string): string {
+    if (typeof value !== 'string') return value;
+    const brand = resolveBrandNames();
+    if (isUpstreamBrand(brand)) return value;
+    return value
+      .replace(new RegExp(`\\b${UPSTREAM_BRAND.cli}\\b`, 'g'), brand.cli)
+      .replace(new RegExp(`\\b${UPSTREAM_BRAND.core}\\b`, 'g'), brand.core)
+      .replace(new RegExp(`\\b${UPSTREAM_BRAND.product}\\b`, 'g'), brand.product);
+  },
+};
+
 i18n
+  .use(brandPostProcessor)
   .use(initReactI18next)
   .init({
+    postProcess: ['brand'],
     resources: initialResources,
     lng: initialLanguage,
     fallbackLng: DEFAULT_LANGUAGE,

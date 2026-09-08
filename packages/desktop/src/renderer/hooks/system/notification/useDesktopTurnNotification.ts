@@ -12,6 +12,7 @@ import { isElectronDesktop } from '@/renderer/utils/platform';
 import { getSnapshotConversationName } from '@/renderer/pages/conversation/GroupedHistory/hooks/useConversationListSync';
 import { createBrowserNotificationController, truncateConversationName } from './browserNotificationCore';
 import { PRODUCT_NAME } from '@/common/branding';
+import { resolveBrandProductName } from '@renderer/services/whitelabel';
 
 /**
  * Desktop-only: fire a native system notification when an agent turn finishes.
@@ -54,7 +55,11 @@ export const useDesktopTurnNotification = (): void => {
         // Both turn-completed and confirmation (permission / question) kinds
         // fire a native notification. The main process still gates on the
         // setting and skips when the window is focused.
-        void ipcBridge.notification.show.invoke({ title: PRODUCT_NAME, body, conversation_id: conversationId });
+        void ipcBridge.notification.show.invoke({
+          title: resolveBrandProductName(PRODUCT_NAME),
+          body,
+          conversation_id: conversationId,
+        });
       },
     });
 

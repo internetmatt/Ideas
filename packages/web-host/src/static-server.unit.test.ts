@@ -420,4 +420,68 @@ describe('static-server', () => {
     expect(typeof h2.networkUrl === 'string' || h2.networkUrl === undefined).toBe(true);
     await h2.stop();
   });
+
+  describe('local branding override (AIONUI_PRODUCT_NAME / AIONUI_WHITELABEL)', () => {
+    const savedEnv: Record<string, string | undefined> = {};
+
+    beforeEach(() => {
+      savedEnv.AIONUI_PRODUCT_NAME = process.env.AIONUI_PRODUCT_NAME;
+      savedEnv.AIONUI_WHITELABEL = process.env.AIONUI_WHITELABEL;
+      delete process.env.AIONUI_PRODUCT_NAME;
+      delete process.env.AIONUI_WHITELABEL;
+    });
+
+    afterEach(() => {
+      if (savedEnv.AIONUI_PRODUCT_NAME === undefined) delete process.env.AIONUI_PRODUCT_NAME;
+      else process.env.AIONUI_PRODUCT_NAME = savedEnv.AIONUI_PRODUCT_NAME;
+      if (savedEnv.AIONUI_WHITELABEL === undefined) delete process.env.AIONUI_WHITELABEL;
+      else process.env.AIONUI_WHITELABEL = savedEnv.AIONUI_WHITELABEL;
+    });
+
+    it('leaves index.html untouched when neither env var is set', async () => {
+      const backend = await startMockBackend((_req, res) => res.end('nope'));
+      stopBackend = backend.close;
+      handle = await startStaticServer({ staticDir, backendPort: backend.port, port: 0 });
+      const r = await fetch(`${handle.localUrl}/`);
+      const text = await r.text();
+      expect(text).not.toContain('__PROJECTO_INTEGRATIONS__');
+      expect(text).toContain('<title>root</title>');
+    });
+
+    it('injects window.__PROJECTO_INTEGRATIONS__ and rewrites <title> at / when AIONUI_PRODUCT_NAME is set', async () => {
+      process.env.AIONUI_PRODUCT_NAME = 'Projecto';
+      const backend = await startMockBackend((_req, res) => res.end('nope'));
+      stopBackend = backend.close;
+      handle = await startStaticServer({ staticDir, backendPort: backend.port, port: 0 });
+      const r = await fetch(`${handle.localUrl}/`);
+      expect(r.status).toBe(200);
+      const text = await r.text();
+      expect(text).toContain('window.__PROJECTO_INTEGRATIONS__={"productName":"Projecto"}');
+      expect(text).toContain('<title>Projecto</title>');
+      expect(text).not.toContain('<title>root</title>');
+    });
+
+    it('also injects on SPA-fallback routes (e.g. /chat/123), not just /', async () => {
+      process.env.AIONUI_PRODUCT_NAME = 'Projecto';
+      process.env.AIONUI_WHITELABEL = 'projecto';
+      const backend = await startMockBackend((_req, res) => res.end('nope'));
+      stopBackend = backend.close;
+      handle = await startStaticServer({ staticDir, backendPort: backend.port, port: 0 });
+      const r = await fetch(`${handle.localUrl}/chat/123`);
+      const text = await r.text();
+      expect(text).toContain('"productName":"Projecto"');
+      expect(text).toContain('"whitelabel":"projecto"');
+    });
+
+    it('does not inject into real static assets, only the SPA shell', async () => {
+      process.env.AIONUI_PRODUCT_NAME = 'Projecto';
+      const backend = await startMockBackend((_req, res) => res.end('nope'));
+      stopBackend = backend.close;
+      handle = await startStaticServer({ staticDir, backendPort: backend.port, port: 0 });
+      const r = await fetch(`${handle.localUrl}/assets/main.js`);
+      const text = await r.text();
+      expect(text).toContain('console.log("hi")');
+      expect(text).not.toContain('__PROJECTO_INTEGRATIONS__');
+    });
+  });
 });

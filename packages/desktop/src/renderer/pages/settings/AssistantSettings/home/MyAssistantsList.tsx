@@ -12,6 +12,7 @@ import { Dropdown, Menu, Button } from '@arco-design/web-react';
 import { AllApplication, Down } from '@icon-park/react';
 import React, { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { brandDataString } from '@renderer/services/whitelabel';
 
 type MyAssistantsListProps = {
   assistants: AssistantListItem[];
@@ -62,7 +63,13 @@ const MyAssistantsList: React.FC<MyAssistantsListProps> = ({
   };
 
   const { cliAssistants, createdAssistants } = useMemo(() => {
-    const filtered = filterByEnabled(assistants, filter);
+    // Backend-generated assistants carry upstream names (aioncore persists the
+    // built-in one as "Aion CLI"), which the i18n post-processor never sees.
+    // Rebrand for display only — the stored record is untouched.
+    const branded = assistants.map((assistant) =>
+      assistant.name ? { ...assistant, name: brandDataString(assistant.name) } : assistant
+    );
+    const filtered = filterByEnabled(branded, filter);
     return groupMyAssistants(filtered);
   }, [assistants, filter]);
 
