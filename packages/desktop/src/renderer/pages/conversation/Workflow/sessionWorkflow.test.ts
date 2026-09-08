@@ -24,14 +24,14 @@ describe('readSessionWorkflow', () => {
       readSessionWorkflow({
         session_workflow: {
           provider: 'flowise',
-          base_url: 'http://localhost:3000',
+          base_url: 'http://localhost:3011',
           flow_id: 'abc',
           open_by_default: true,
         },
       })
     ).toEqual({
       provider: 'flowise',
-      base_url: 'http://localhost:3000',
+      base_url: 'http://localhost:3011',
       flow_id: 'abc',
       open_by_default: true,
     });
@@ -41,19 +41,20 @@ describe('readSessionWorkflow', () => {
 describe('resolveFlowiseUrl / buildFlowiseEmbedUrl', () => {
   it('falls back to the default base URL', () => {
     expect(resolveFlowiseUrl()).toBe(DEFAULT_FLOWISE_URL);
+    expect(DEFAULT_FLOWISE_URL).toBe('http://127.0.0.1:3011');
   });
 
   it('honors an explicit override', () => {
-    expect(resolveFlowiseUrl('http://flowise.example:3010/')).toBe('http://flowise.example:3010');
+    expect(resolveFlowiseUrl('http://flowise.example:3011/')).toBe('http://flowise.example:3011');
   });
 
   it('scopes embed URLs to a flow and conversation', () => {
     expect(
       buildFlowiseEmbedUrl({
-        baseUrl: 'http://flowise.example:3010',
+        baseUrl: 'http://flowise.example:3011',
         flowId: 'flow-1',
         conversationId: 'conv-9',
       })
-    ).toBe('http://flowise.example:3010/canvas/flow-1?conversationId=conv-9');
+    ).toBe('http://flowise.example:3011/canvas/flow-1?conversationId=conv-9');
   });
 });
