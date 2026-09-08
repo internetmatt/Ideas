@@ -4,7 +4,10 @@
  * SPDX-License-Identifier: Apache-2.0
  *
  * Session-bound Flowise workflow attachment stored on conversation.extra.
+ * Pointer only — OpenIdeas owns ChatFlow / flowData.
  */
+
+import { isFlowiseFlowType, type FlowiseChatflow, type FlowiseFlowType } from '@renderer/services/flowise';
 
 export type SessionWorkflowProvider = 'flowise';
 
@@ -14,6 +17,10 @@ export type SessionWorkflowAttachment = {
   base_url?: string;
   /** Flowise chatflow / agentflow id when known */
   flow_id?: string;
+  /** OpenIdeas ChatFlow.type */
+  flow_type?: FlowiseFlowType;
+  /** OpenIdeas workspaceId (local default is General) */
+  workspace_id?: string;
   /** Open the session canvas when the conversation loads */
   open_by_default?: boolean;
 };
@@ -31,6 +38,19 @@ export function readSessionWorkflow(extra: unknown): SessionWorkflowAttachment |
     provider: 'flowise',
     base_url: typeof raw.base_url === 'string' ? raw.base_url : undefined,
     flow_id: typeof raw.flow_id === 'string' ? raw.flow_id : undefined,
+    flow_type: isFlowiseFlowType(raw.flow_type) ? raw.flow_type : undefined,
+    workspace_id: typeof raw.workspace_id === 'string' ? raw.workspace_id : undefined,
     open_by_default: Boolean(raw.open_by_default),
+  };
+}
+
+export function attachmentFromChatflow(flow: FlowiseChatflow, baseUrl?: string): SessionWorkflowAttachment {
+  return {
+    provider: 'flowise',
+    base_url: baseUrl,
+    flow_id: flow.id,
+    flow_type: flow.type,
+    workspace_id: flow.workspaceId,
+    open_by_default: true,
   };
 }

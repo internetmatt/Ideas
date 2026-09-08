@@ -1,9 +1,8 @@
-// Bumped from v1: the v1 networkFirst fallback returned OFFLINE_PAGE_URL
-// (index.html) for failed script requests, causing "module script MIME text/html"
-// errors when the server was down or served a different asset hash. The v2
-// activate handler deletes v1, flushing any poisoned cached entries.
-const CACHE_NAME = 'aionui-webui-v2';
+// Bumped to v3: catch networkOnly fetch failures (server flaps / stale hashes)
+// and never intercept `/canvas-island/` (OpenIdeas same-origin iframe).
+const CACHE_NAME = 'aionui-webui-v3';
 const NON_CACHEABLE_PATHS = new Set(['/qr-login']);
+const CANVAS_ISLAND_PREFIX = '/canvas-island';
 const OFFLINE_PAGE_URL = new URL('./index.html', self.location.href).toString();
 const PRECACHE_URLS = [
   new URL('./', self.location.href).toString(),
@@ -58,6 +57,10 @@ function shouldHandleRequest(request) {
 
   const url = new URL(request.url);
   if (url.origin !== self.location.origin) {
+    return false;
+  }
+
+  if (url.pathname === CANVAS_ISLAND_PREFIX || url.pathname.startsWith(`${CANVAS_ISLAND_PREFIX}/`)) {
     return false;
   }
 
@@ -124,7 +127,15 @@ async function staleWhileRevalidate(request) {
 
 async function networkOnlyWithTypeGuard(request) {
   const cache = await caches.open(CACHE_NAME);
-  const response = await fetch(request);
+  let response;
+  try {
+    response = await fetch(request);
+  } catch {
+    // Server flap / stale hash / aborted navigation — never reject FetchEvent.
+    const cached = await cache.match(request);
+    if (cached && !isAssetContentTypeMismatch(request, cached)) return cached;
+    return Response.error();
+  }
   if (isAssetContentTypeMismatch(request, response)) {
     // Server is probably serving the SPA fallback (index.html) for a script
     // URL whose hash no longer exists on disk — typically a stale asset

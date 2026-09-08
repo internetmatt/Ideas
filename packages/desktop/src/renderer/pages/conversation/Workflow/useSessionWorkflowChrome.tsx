@@ -77,7 +77,12 @@ export function useSessionWorkflowChrome(conversation: TChatConversation | undef
 
   const workflowPanel =
     conversation && workflow.isOpen ? (
-      <SessionWorkflowPanel conversationId={conversation.id} attachment={attachment} onClose={() => workflow.close()} />
+      <SessionWorkflowPanel
+        conversationId={conversation.id}
+        attachment={attachment}
+        onClose={() => workflow.close()}
+        onAttach={(next) => void persistAttachment(next)}
+      />
     ) : null;
 
   return {

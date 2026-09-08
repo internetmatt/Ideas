@@ -1,7 +1,19 @@
 import React from 'react';
 import { cleanup, render, waitFor } from '@testing-library/react';
 import { afterEach, describe, expect, it } from 'vitest';
-import { AuthProvider, useAuth } from '@/renderer/hooks/context/AuthContext';
+import { AuthProvider, isProjectoHostedShell, useAuth } from '@/renderer/hooks/context/AuthContext';
+
+describe('isProjectoHostedShell', () => {
+  it('keeps branding-only Ideas on local /login', () => {
+    expect(isProjectoHostedShell({ whitelabel: 'ideas' })).toBe(false);
+    expect(isProjectoHostedShell({ whitelabel: 'ideas', identity: {} })).toBe(false);
+  });
+
+  it('treats Projecto or Ideas-plus-identity as a host shell', () => {
+    expect(isProjectoHostedShell({ whitelabel: 'projecto' })).toBe(true);
+    expect(isProjectoHostedShell({ whitelabel: 'ideas', identity: { email: 'matt@example.com' } })).toBe(true);
+  });
+});
 
 type AuthSnapshot = ReturnType<typeof useAuth>;
 
