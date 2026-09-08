@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Ideas · Session + Workflow</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <div class="app-shell">
+      <header class="topbar">
+        <div class="brand">
+          <span class="brand-mark" aria-hidden="true"></span>
+          <div class="brand-copy">
+            <p class="brand-name">Ideas</p>
+            <p class="brand-sub">AionUi × Flowise session</p>
+          </div>
+        </div>
+        <div class="session-meta">
+          <span class="pill" id="session-id">session · demo-01</span>
+          <span class="pill muted" id="workflow-status">workflow idle</span>
+        </div>
+        <div class="top-actions">
+          <button type="button" class="btn ghost" id="btn-reset" title="Reset session">
+            Reset
+          </button>
+          <button type="button" class="btn primary" id="btn-run" title="Run attached workflow">
+            Run workflow
+          </button>
+        </div>
+      </header>
+
+      <main class="workspace">
+        <section class="chat-pane" aria-label="Chat session">
+          <div class="pane-header">
+            <h1>Chat</h1>
+            <p>Messages share context with the attached graph.</p>
+          </div>
+          <div class="transcript" id="transcript" role="log" aria-live="polite"></div>
+          <form class="composer" id="composer">
+            <label class="sr-only" for="composer-input">Message</label>
+            <textarea
+              id="composer-input"
+              rows="2"
+              placeholder="Ask something — or run the workflow to reply from the graph…"
+              autocomplete="off"
+            ></textarea>
+            <button type="submit" class="btn primary">Send</button>
+          </form>
+        </section>
+
+        <section class="flow-pane" aria-label="Session workflow editor">
+          <div class="pane-header flow-header">
+            <div>
+              <h1>Session workflow</h1>
+              <p>Buildable · runnable · bound to this chat</p>
+            </div>
+            <div class="palette" id="palette">
+              <button type="button" class="chip" data-node="llm">+ LLM</button>
+              <button type="button" class="chip" data-node="tool">+ Tool</button>
+              <button type="button" class="chip" data-node="branch">+ Branch</button>
+              <button type="button" class="chip" data-node="reply">+ Reply</button>
+            </div>
+          </div>
+          <div class="canvas-wrap">
+            <svg id="edges" class="edges" aria-hidden="true"></svg>
+            <div id="canvas" class="canvas"></div>
+          </div>
+          <p class="hint">
+            Drag nodes · click a port then another to connect · Run streams steps into chat
+          </p>
+        </section>
+      </main>
+    </div>
+    <script type="module" src="./src/app.js"></script>
+  </body>
+</html>
