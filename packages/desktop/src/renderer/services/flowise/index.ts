@@ -18,6 +18,10 @@ export {
   isFlowiseFlowType,
   listChatflows,
   parseFlowiseChatflow,
+  parseFlowisePredictResult,
   pingFlowise,
+  predictChatflow,
+  type FlowisePredictRequest,
+  type FlowisePredictResult,
 } from './client';
 export { DEFAULT_FLOWISE_WORKSPACE_ID, EMPTY_FLOW_DATA, FLOWISE_FLOW_TYPES, type FlowiseChatflow, type FlowiseFlowType } from './types';

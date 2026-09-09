@@ -116,3 +116,68 @@ export async function createBlankChatflow(baseUrl?: string, name = 'Untitled Cha
 export async function createBlankAgentflow(baseUrl?: string, name = 'Untitled Agent'): Promise<FlowiseChatflow> {
   return createBlankFlow(baseUrl, name, 'AGENTFLOW');
 }
+
+export type FlowisePredictRequest = {
+  question: string;
+  chatId?: string;
+};
+
+export type FlowisePredictResult = {
+  text: string;
+  chatId?: string;
+  chatMessageId?: string;
+  raw: unknown;
+};
+
+/** Extract assistant text from an OpenIdeas / Flowise prediction payload. */
+export function parseFlowisePredictResult(raw: unknown): FlowisePredictResult {
+  if (typeof raw === 'string') {
+    return { text: raw, raw };
+  }
+  if (!raw || typeof raw !== 'object') {
+    return { text: '', raw };
+  }
+  const row = raw as Record<string, unknown>;
+  let text = '';
+  if (typeof row.text === 'string') {
+    text = row.text;
+  } else if (typeof row.json === 'string') {
+    text = row.json;
+  } else if (row.json != null) {
+    text = JSON.stringify(row.json);
+  } else if (typeof row.message === 'string') {
+    text = row.message;
+  }
+  return {
+    text,
+    chatId: typeof row.chatId === 'string' ? row.chatId : undefined,
+    chatMessageId: typeof row.chatMessageId === 'string' ? row.chatMessageId : undefined,
+    raw,
+  };
+}
+
+/**
+ * Run a non-streaming OpenIdeas prediction for an attached chatflow/agentflow.
+ * Uses the internal prediction endpoint (same auth posture as the canvas editor).
+ */
+export async function predictChatflow(
+  baseUrl: string | undefined,
+  chatflowId: string,
+  request: FlowisePredictRequest
+): Promise<FlowisePredictResult> {
+  if (!chatflowId) {
+    throw new FlowiseClientError('OpenIdeas chatflow id is required', 400);
+  }
+  if (!request.question.trim()) {
+    throw new FlowiseClientError('OpenIdeas question is required', 400);
+  }
+  const raw = await flowiseFetch(resolveFlowiseUrl(baseUrl), `/api/v1/internal-prediction/${encodeURIComponent(chatflowId)}`, {
+    method: 'POST',
+    body: JSON.stringify({
+      question: request.question,
+      chatId: request.chatId,
+      streaming: false,
+    }),
+  });
+  return parseFlowisePredictResult(raw);
+}
