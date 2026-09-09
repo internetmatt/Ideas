@@ -36,6 +36,19 @@ describe('resolveFlowiseUrl / buildFlowiseEmbedUrl', () => {
     ).toBe('http://flowise.example:3010/v2/agentcanvas/flow-1?conversationId=conv-9');
   });
 
+
+  it('routes chatflows to /canvas when flowType is CHATFLOW', () => {
+    expect(
+      buildFlowiseEmbedUrl({
+        baseUrl: 'http://flowise.example:3010',
+        flowId: 'flow-1',
+        conversationId: 'conv-9',
+        flowType: 'CHATFLOW',
+      })
+    ).toBe('http://flowise.example:3010/canvas/flow-1?conversationId=conv-9');
+  });
+
+
   it('maps loopback :3010 onto the same-origin island in WebUI', () => {
     const previous = globalThis.window;
     Object.defineProperty(globalThis, 'window', {

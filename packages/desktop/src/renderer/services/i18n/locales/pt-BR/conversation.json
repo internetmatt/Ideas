@@ -804,6 +804,8 @@
     "openIdeasOffline": "OpenIdeas is offline on this host.",
     "emptySessionHint": "Pick an existing chatflow or agentflow, or create a new one for this session.",
     "emptyCanvasHint": "Pick a chatflow or agentflow from the list, or create a new one.",
-    "predictFailed": "O OpenIdeas não pôde responder a esta mensagem."
+    "predictFailed": "O OpenIdeas não pôde responder a esta mensagem.",
+    "listFailed": "Não foi possível carregar os fluxos do OpenIdeas.",
+    "createFailed": "Não foi possível criar esse fluxo do OpenIdeas."
   }
 }
