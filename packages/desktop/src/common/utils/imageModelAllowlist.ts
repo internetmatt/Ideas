@@ -42,6 +42,10 @@ const RULES: Array<{
     match: (p) => !!p.base_url?.includes('openrouter.ai'),
   },
   {
+    id: 'ideus',
+    match: (p) => !!p.base_url?.includes('ideus.ai') || !!p.name?.toLowerCase().includes('ideas'),
+  },
+  {
     id: 'antigravity',
     match: (p) => !!p.name?.toLowerCase().includes('antigravity'),
   },

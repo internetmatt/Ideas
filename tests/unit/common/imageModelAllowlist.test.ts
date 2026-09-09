@@ -24,6 +24,11 @@ describe('isImageGenSupported', () => {
     expect(isImageGenSupported(provider, 'nano-banana')).toBe(true);
   });
 
+  it('accepts Ideas ideus.ai OpenRouter-wrapper image models via base_url', () => {
+    const provider = { platform: 'custom', base_url: 'https://api.ideus.ai/v1', name: 'Ideas Runtime (ideus.ai)' };
+    expect(isImageGenSupported(provider, 'google/gemini-2.5-flash-image-preview')).toBe(true);
+  });
+
   it('accepts AntigravityTools by name', () => {
     const provider = { platform: 'custom', name: 'AntigravityTools' };
     expect(isImageGenSupported(provider, 'gemini-3-pro-image-1x1')).toBe(true);
