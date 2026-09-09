@@ -474,6 +474,7 @@
     "tools": "工具"
   },
   "webui": "遠端連線",
+  "flowise": "Flowise",
   "installed": "已安裝",
   "builtin": "內建",
   "channels": "頻道",
