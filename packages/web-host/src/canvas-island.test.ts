@@ -66,6 +66,8 @@ describe('rewriteFlowiseIslandPayload', () => {
     expect(js).not.toContain('ik={basename:"/canvas-island"}');
   });
 });
+
+describe('canvas island routing', () => {
   it('recognizes Flowise SPA paths that Ideas HashRouter never owns', () => {
     expect(isFlowiseSpaLeakPath('/v2/agentcanvas/abc')).toBe(true);
     expect(isFlowiseSpaLeakPath('/chatflows')).toBe(true);
