@@ -3,7 +3,7 @@
   "brand": "AionUi",
   "subtitle": "おかえりなさい。アカウントにサインインしてください",
   "username": "ユーザー名",
-  "usernamePlaceholder": "ユーザー名を入力してください",
+  "usernamePlaceholder": "ユーザー名",
   "password": "パスワード",
   "passwordPlaceholder": "パスワードを入力してください",
   "rememberMe": "ログイン状態を保持",
@@ -17,10 +17,11 @@
   "footerSecondary": "効率的でエレガント",
   "errors": {
     "empty": "ユーザー名とパスワードを入力してください",
-    "invalidCredentials": "ユーザー名またはパスワードが正しくありません",
+    "invalidCredentials": "ユーザー名またはパスワードが無効です",
     "tooManyAttempts": "試行回数が多すぎます。後でもう一度お試しください",
     "networkError": "接続に失敗しました。後でもう一度お試しください",
     "serverError": "サーバーで問題が発生しました。しばらく待ってから再試行してください",
     "unknown": "ログインに失敗しました。後でもう一度お試しください"
-  }
+  },
+  "email": "ユーザー名"
 }

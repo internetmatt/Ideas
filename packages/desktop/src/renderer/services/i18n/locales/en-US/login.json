@@ -3,7 +3,7 @@
   "brand": "AionUi",
   "subtitle": "Welcome back, please sign in to your account",
   "username": "Username",
-  "usernamePlaceholder": "Enter your username",
+  "usernamePlaceholder": "Username",
   "password": "Password",
   "passwordPlaceholder": "Enter your password",
   "rememberMe": "Remember me",
@@ -16,11 +16,12 @@
   "footerPrimary": "Transform your command-line AI",
   "footerSecondary": "Modern & Efficient",
   "errors": {
-    "empty": "Please enter username and password",
+    "empty": "Enter your username and password",
     "invalidCredentials": "Invalid username or password",
     "tooManyAttempts": "Too many attempts, please try again later",
     "networkError": "Connection failed, please try again",
     "serverError": "Server error, please try again later",
     "unknown": "Sign-in failed, please try again"
-  }
+  },
+  "email": "Username"
 }
