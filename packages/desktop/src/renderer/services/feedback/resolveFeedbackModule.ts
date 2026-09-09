@@ -29,6 +29,8 @@ const ROUTE_MODULE_MAP: ReadonlyArray<readonly [prefix: string, tag: FeedbackMod
   ['/settings/appearance', 'display-desktop'],
   ['/settings/pet', 'display-desktop'],
   ['/settings/webui', 'webui-remote'],
+  // Same Flowise surface as /flowise, reached from settings.
+  ['/settings/flowise', 'conversation-session'],
   // Extension-contributed settings tabs are channel plugins (Telegram/Slack/
   // Feishu…) today, so route their reports to the channel module.
   ['/settings/ext', 'channel'],

@@ -464,6 +464,7 @@
     "tools": "MCP & Sprache"
   },
   "webui": "Remote",
+  "flowise": "Flowise",
   "installed": "Installiert",
   "builtin": "Eingebaut",
   "channels": "Kanäle",

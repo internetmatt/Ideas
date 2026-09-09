@@ -474,6 +474,7 @@
     "tools": "Ferramentas"
   },
   "webui": "Remoto",
+  "flowise": "Flowise",
   "installed": "Instalado",
   "builtin": "Integrado",
   "channels": "Canais",

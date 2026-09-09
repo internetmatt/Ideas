@@ -19,6 +19,7 @@ import {
   LinkCloud,
   Puzzle,
   Robot,
+  ShareOne,
   System,
   Toolkit,
 } from '@icon-park/react';
@@ -76,6 +77,12 @@ export function getBuiltinSettingsNavItems(isDesktop: boolean, t: TranslateFn): 
       label: t('settings.webui'),
       icon: isDesktop ? <Earth theme='outline' size='16' /> : <Communication theme='outline' size='16' />,
       path: 'webui',
+    },
+    flowise: {
+      id: 'flowise',
+      label: t('settings.flowise'),
+      icon: <ShareOne theme='outline' size='16' />,
+      path: 'flowise',
     },
     pet: { id: 'pet', label: t('pet.desktopPet'), icon: <Cat theme='outline' size='16' />, path: 'pet' },
     system: { id: 'system', label: t('settings.system'), icon: <System theme='outline' size='16' />, path: 'system' },
