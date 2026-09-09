@@ -29,4 +29,8 @@ if [[ ! -f out/renderer/index.html ]]; then
   bun run package
 fi
 
+if [[ "${CLOUD_AGENT_INSTALL_OPENIDEAS:-1}" == "1" ]]; then
+  bash "$(dirname "$0")/cloud-agent-openideas-install.sh"
+fi
+
 echo "[cloud-agent-install] ready (bun=$(bun --version); aioncore=$(command -v aioncore))"
