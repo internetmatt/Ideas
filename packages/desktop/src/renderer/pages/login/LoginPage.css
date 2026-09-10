@@ -268,6 +268,23 @@ body.login-page-active {
   outline: none;
 }
 
+.login-page__remember {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: var(--login-field-width);
+  margin-top: 4px;
+  color: var(--login-muted);
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.login-page__remember input {
+  width: 16px;
+  height: 16px;
+  accent-color: var(--login-primary);
+}
+
 .login-page__submit {
   width: var(--login-field-width);
   min-height: 46px;

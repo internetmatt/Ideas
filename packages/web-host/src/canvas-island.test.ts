@@ -159,6 +159,7 @@ describe('rewriteFlowiseIslandPayload', () => {
   });
 });
 
+describe('canvas island routing', () => {
 describe('canvas island routing helpers', () => {
   it('recognizes Flowise SPA paths that Ideas HashRouter never owns', () => {
     expect(isFlowiseSpaLeakPath('/v2/agentcanvas/abc')).toBe(true);

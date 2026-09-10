@@ -15,13 +15,38 @@ type MessageState = {
   text: string;
 };
 
+const LAST_EMAIL_KEY = 'ideas.webui.lastLoginEmail';
+
+function readRememberedEmail(): string {
+  if (typeof window === 'undefined') return '';
+  try {
+    return window.localStorage.getItem(LAST_EMAIL_KEY)?.trim() || '';
+  } catch {
+    return '';
+  }
+}
+
+function writeRememberedEmail(email: string, remember: boolean): void {
+  if (typeof window === 'undefined') return;
+  try {
+    if (remember && email) {
+      window.localStorage.setItem(LAST_EMAIL_KEY, email);
+    } else {
+      window.localStorage.removeItem(LAST_EMAIL_KEY);
+    }
+  } catch {
+    // private mode
+  }
+}
+
 const LoginPage: React.FC = () => {
   const { t, i18n } = useTranslation();
   const navigate = useNavigate();
   const { status, login } = useAuth();
 
-  const [email, setEmail] = useState('');
+  const [email, setEmail] = useState(() => readRememberedEmail());
   const [password, setPassword] = useState('');
+  const [remember, setRemember] = useState(true);
   const [passwordVisible, setPasswordVisible] = useState(false);
   const [forgotOpen, setForgotOpen] = useState(false);
   const [message, setMessage] = useState<MessageState | null>(null);
@@ -112,9 +137,10 @@ const LoginPage: React.FC = () => {
       setLoading(true);
       setMessage(null);
 
-      const result = await login({ username: trimmed, password });
+      const result = await login({ username: trimmed, password, remember });
 
       if (result.success) {
+        writeRememberedEmail(trimmed, remember);
         showMessage({ type: 'success', text: t('login.success') });
         window.setTimeout(() => {
           void navigate('/guid', { replace: true });
@@ -139,7 +165,7 @@ const LoginPage: React.FC = () => {
 
       setLoading(false);
     },
-    [email, login, navigate, password, showMessage, t]
+    [email, login, navigate, password, remember, showMessage, t]
   );
 
   if (status === 'checking') {
@@ -243,6 +269,16 @@ const LoginPage: React.FC = () => {
                   </button>
                 }
               />
+
+              <label className='login-page__remember'>
+                <input
+                  type='checkbox'
+                  checked={remember}
+                  onChange={(event) => setRemember(event.target.checked)}
+                  data-testid='login-remember'
+                />
+                <span>{t('login.rememberMe')}</span>
+              </label>
 
               <button type='submit' className='login-page__submit' disabled={loading}>
                 <span className='login-page__submit-row'>
