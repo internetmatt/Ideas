@@ -21,6 +21,7 @@ import fixPath from 'fix-path';
 import * as fs from 'fs';
 import * as path from 'path';
 import { initMainAdapterWithWindow } from './common/adapter/main';
+import { resolveIdeasHostShellUrl } from './common/adapter/webUiPublicBase';
 import { ipcBridge } from './common';
 import { initializeProcess } from './process';
 import { startBackendOrExit } from './process/startup/backendStartup';
@@ -574,24 +575,36 @@ const createWindow = ({ showOnReady = true }: { showOnReady?: boolean } = {}): v
     console.log('[AionUi] Auto-updater disabled via env/CI guard');
   }
 
-  // Load the renderer: dev server URL in development, built HTML file in production
+  // Load the renderer: host :4715 shell, Vite URL in development, or built HTML.
+  const hostShellUrl = resolveIdeasHostShellUrl();
   const rendererUrl = process.env['ELECTRON_RENDERER_URL'];
   const fallbackFile = path.join(__dirname, '../renderer/index.html');
 
-  if (!app.isPackaged && rendererUrl) {
-    console.log(`[AionUi] Loading renderer URL: ${rendererUrl}`);
-    mainWindow.loadURL(rendererUrl).catch((error) => {
-      console.error('[AionUi] loadURL failed, falling back to file:', error.message || error);
-      mainWindow.loadFile(fallbackFile).catch((e2) => {
-        console.error('[AionUi] loadFile fallback also failed:', e2.message || e2);
+  const loadRenderer = (win: BrowserWindow): void => {
+    if (hostShellUrl) {
+      console.log(`[AionUi] Loading host shell: ${hostShellUrl}`);
+      win.loadURL(hostShellUrl).catch((error) => {
+        console.error('[AionUi] Host shell loadURL failed:', error.message || error);
       });
-    });
-  } else {
+      return;
+    }
+    if (!app.isPackaged && rendererUrl) {
+      console.log(`[AionUi] Loading renderer URL: ${rendererUrl}`);
+      win.loadURL(rendererUrl).catch((error) => {
+        console.error('[AionUi] loadURL failed, falling back to file:', error.message || error);
+        win.loadFile(fallbackFile).catch((e2) => {
+          console.error('[AionUi] loadFile fallback also failed:', e2.message || e2);
+        });
+      });
+      return;
+    }
     console.log(`[AionUi] Loading renderer file: ${fallbackFile}`);
-    mainWindow.loadFile(fallbackFile).catch((error) => {
+    win.loadFile(fallbackFile).catch((error) => {
       console.error('[AionUi] loadFile failed:', error.message || error);
     });
-  }
+  };
+
+  loadRenderer(mainWindow);
 
   mainWindow.webContents.on('did-fail-load', (_event, errorCode, errorDescription, validatedURL, isMainFrame) => {
     console.error('[AionUi] did-fail-load:', { errorCode, errorDescription, validatedURL, isMainFrame });
@@ -628,15 +641,7 @@ const createWindow = ({ showOnReady = true }: { showOnReady?: boolean } = {}): v
       if (mainWindow.isDestroyed()) return;
       console.log('[AionUi] Attempting to recover from renderer crash by reloading...');
 
-      if (!app.isPackaged && rendererUrl) {
-        mainWindow.loadURL(rendererUrl).catch((error) => {
-          console.error('[AionUi] Recovery loadURL failed:', error.message || error);
-        });
-      } else {
-        mainWindow.loadFile(fallbackFile).catch((error) => {
-          console.error('[AionUi] Recovery loadFile failed:', error.message || error);
-        });
-      }
+      loadRenderer(mainWindow);
     };
 
     if (action.delayMs === 0) {
@@ -808,7 +813,11 @@ const handleAppReady = async (): Promise<void> => {
   }
 
   const debugBackendStartupFailure = resolveDebugBackendStartupFailure();
-  if (debugBackendStartupFailure) {
+  const hostShellUrl = resolveIdeasHostShellUrl();
+  if (hostShellUrl) {
+    console.log(`[AionUi] Host shell attach — skipping local aioncore (${hostShellUrl})`);
+    mark('hostShellAttach');
+  } else if (debugBackendStartupFailure) {
     applyDebugBackendStartupFailure(debugBackendStartupFailure);
     mark(`debugBackendStartupFailure:${debugBackendStartupFailure.reason}`);
   } else {
