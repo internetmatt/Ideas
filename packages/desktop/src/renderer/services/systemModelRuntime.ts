@@ -54,7 +54,7 @@ function readIntegrations(): IntegrationsBag {
   if (typeof window === 'undefined') return {};
   const projecto = window.__PROJECTO_INTEGRATIONS__;
   const ideas = window.__IDEAS_INTEGRATIONS__;
-  return { ...(projecto ?? {}), ...(ideas ?? {}) };
+  return { ...projecto, ...ideas };
 }
 
 function pairPresetBase(): string {
