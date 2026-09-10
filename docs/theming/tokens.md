@@ -36,7 +36,7 @@ A 10-step brand ramp (light→dark in light mode; the ramp **inverts** in dark m
 | `--aou-3`  | `#d1d5e5` | `#525a77` | Brand tint                            |
 | `--aou-4`  | `#b5bcd6` | `#6a749b` | Brand tint                            |
 | `--aou-5`  | `#97a0c5` | `#838fba` | Brand mid                             |
-| `--aou-6`  | `#7583b2` | `#a1aacb` | Brand base (= `--brand` light)        |
+| `--aou-6`  | `#7583b2` | `#a1aacb` | Inherited AionUi purple mid (Ideus `--brand` is now dilly-orange) |
 | `--aou-7`  | `#596590` | `#b5bcd6` | Brand strong                          |
 | `--aou-8`  | `#3f4868` | `#d1d5e5` | Brand strong                          |
 | `--aou-9`  | `#262c41` | `#e5e7f0` | Brand darkest tint                    |
@@ -76,7 +76,7 @@ Layered surface scale — higher number = stronger/darker separation in light mo
 
 | Token       | Light     | Dark      | Purpose / 用途                                                                                               |
 | ----------- | --------- | --------- | ------------------------------------------------------------------------------------------------------------ |
-| `--primary` | `#165dff` | `#4d9fff` | Primary action / accent / 主色                                                                               |
+| `--primary` | `#f99334` | `#ffab5c` | Primary action / accent — Ideus dilly-orange / 主色                                                          |
 | `--success` | `#00b42a` | `#23c343` | Success / 成功                                                                                               |
 | `--warning` | `#ff7d00` | `#ff9a2e` | Warning / 警告                                                                                               |
 | `--danger`  | `#f53f3f` | `#f76560` | Error / destructive / 危险                                                                                   |
@@ -94,9 +94,9 @@ Layered surface scale — higher number = stronger/darker separation in light mo
 
 | Token           | Light     | Dark      | Purpose / 用途                           |
 | --------------- | --------- | --------- | ---------------------------------------- |
-| `--brand`       | `#7583b2` | `#a1aacb` | Brand color / 品牌色                     |
-| `--brand-light` | `#eff0f6` | `#3d4150` | Brand-tinted background / 品牌浅(深)背景 |
-| `--brand-hover` | `#b5bcd6` | `#6a749b` | Brand hover / 品牌悬停                   |
+| `--brand`       | `#f99334` | `#ffc58f` | Brand color — Core dilly-orange / 品牌色 |
+| `--brand-light` | `#fff2e5` | `#3d2a1a` | Brand-tinted background / 品牌浅(深)背景 |
+| `--brand-hover` | `#ffab5c` | `#f99334` | Brand hover / 品牌悬停                   |
 
 ### Fills & inverse / 填充与反色
 
@@ -112,8 +112,8 @@ Layered surface scale — higher number = stronger/darker separation in light mo
 
 | Token                    | Light                                    | Dark                                      | Purpose / 用途                                         |
 | ------------------------ | ---------------------------------------- | ----------------------------------------- | ------------------------------------------------------ |
-| `--message-user-bg`      | `#e9efff`                                | `#1e2a3a`                                 | User chat bubble background / 用户消息气泡             |
-| `--message-tips-bg`      | `#f0f4ff`                                | `#1a2333`                                 | Tip/notice background / 提示信息背景                   |
+| `--message-user-bg`      | `#fff2e5`                                | `#3d2a1a`                                 | User chat bubble background / 用户消息气泡             |
+| `--message-tips-bg`      | `#fffaf5`                                | `#2a1f14`                                 | Tip/notice background / 提示信息背景                   |
 | `--workspace-btn-bg`     | `#eff0f1`                                | `#1f1f1f`                                 | Workspace button background / 工作区按钮               |
 | `--thought-gradient`     | `linear-gradient(90deg,#f0f3ff,#f2f2f2)` | `linear-gradient(135deg,#464767,#323232)` | Thinking panel background gradient / 思考面板背景渐变  |
 | `--color-guid-agent-bar` | `#eaecf7`                                | `var(--aou-2)`                            | Home Agent-selector bar background / 首页 Agent 选择条 |

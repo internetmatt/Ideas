@@ -165,4 +165,9 @@ export const colorMapping: Record<string, string> = {
   // Semantic colors
   '#165DFF': 'var(--color-primary)',
   '#165dff': 'var(--color-primary)',
+  // Ideus / AskDilly-Core dilly-orange
+  '#F99334': 'var(--color-primary)',
+  '#f99334': 'var(--color-primary)',
+  '#FFAB5C': 'var(--color-primary)',
+  '#ffab5c': 'var(--color-primary)',
 };

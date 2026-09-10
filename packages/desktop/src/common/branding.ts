@@ -25,6 +25,15 @@
 export const PRODUCT_NAME = 'Ideas';
 
 /**
+ * Shared chrome language with AskDilly-Core Chat Hub.
+ * Ideas conversations are the cowork analog of Core `/home/chat`.
+ * Ideas Agents are local/remote coding agents — not Core n8n workflows
+ * (Core `/home/agents` redirects to Overview / workflows).
+ */
+export const CHAT_HUB_NAME = 'Chat Hub';
+export const AGENTS_NAME = 'Agents';
+
+/**
  * The on-disk name this app has always used, kept so existing installs keep
  * finding their data after the display rename. Change this only alongside a
  * migration that moves the old directory.
