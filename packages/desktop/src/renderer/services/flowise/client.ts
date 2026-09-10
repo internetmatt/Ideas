@@ -7,7 +7,13 @@
  */
 
 import { resolveFlowiseUrl } from './resolveFlowiseUrl';
-import { DEFAULT_FLOWISE_WORKSPACE_ID, EMPTY_FLOW_DATA, FLOWISE_FLOW_TYPES, type FlowiseChatflow, type FlowiseFlowType } from './types';
+import {
+  DEFAULT_FLOWISE_WORKSPACE_ID,
+  EMPTY_FLOW_DATA,
+  FLOWISE_FLOW_TYPES,
+  type FlowiseChatflow,
+  type FlowiseFlowType,
+} from './types';
 
 const INTERNAL_HEADERS = {
   Accept: 'application/json',
@@ -33,7 +39,8 @@ export function parseFlowiseChatflow(raw: unknown): FlowiseChatflow | null {
   const row = raw as Record<string, unknown>;
   if (typeof row.id !== 'string' || !row.id) return null;
   if (typeof row.name !== 'string') return null;
-  const workspaceId = typeof row.workspaceId === 'string' && row.workspaceId ? row.workspaceId : DEFAULT_FLOWISE_WORKSPACE_ID;
+  const workspaceId =
+    typeof row.workspaceId === 'string' && row.workspaceId ? row.workspaceId : DEFAULT_FLOWISE_WORKSPACE_ID;
   return {
     id: row.id,
     name: row.name,
@@ -46,15 +53,26 @@ export function parseFlowiseChatflow(raw: unknown): FlowiseChatflow | null {
 }
 
 function parseFlowiseChatflowList(raw: unknown): FlowiseChatflow[] {
-  const rows = Array.isArray(raw) ? raw : raw && typeof raw === 'object' && Array.isArray((raw as { data?: unknown }).data) ? (raw as { data: unknown[] }).data : [];
+  const rows = Array.isArray(raw)
+    ? raw
+    : raw && typeof raw === 'object' && Array.isArray((raw as { data?: unknown }).data)
+      ? (raw as { data: unknown[] }).data
+      : [];
   return rows.map(parseFlowiseChatflow).filter((row): row is FlowiseChatflow => row !== null);
 }
 
+/** Same-origin `/canvas-island` can reuse the OpenIdeas iframe session cookies. */
+function flowiseCredentials(baseUrl: string): RequestCredentials {
+  const resolved = resolveFlowiseUrl(baseUrl);
+  return resolved.startsWith('/') ? 'same-origin' : 'omit';
+}
+
 async function flowiseFetch(baseUrl: string, path: string, init?: RequestInit): Promise<unknown> {
-  const url = `${resolveFlowiseUrl(baseUrl)}${path}`;
+  const resolvedBase = resolveFlowiseUrl(baseUrl);
+  const url = `${resolvedBase}${path}`;
   const response = await fetch(url, {
     ...init,
-    credentials: 'omit',
+    credentials: flowiseCredentials(resolvedBase),
     headers: {
       ...INTERNAL_HEADERS,
       ...(init?.body ? { 'Content-Type': 'application/json' } : {}),
@@ -71,8 +89,9 @@ async function flowiseFetch(baseUrl: string, path: string, init?: RequestInit): 
 
 export async function pingFlowise(baseUrl?: string, signal?: AbortSignal): Promise<boolean> {
   try {
-    const url = `${resolveFlowiseUrl(baseUrl)}/api/v1/ping`;
-    const response = await fetch(url, { signal, credentials: 'omit' });
+    const resolvedBase = resolveFlowiseUrl(baseUrl);
+    const url = `${resolvedBase}/api/v1/ping`;
+    const response = await fetch(url, { signal, credentials: flowiseCredentials(resolvedBase) });
     return response.ok;
   } catch {
     return false;
@@ -85,7 +104,9 @@ export async function listChatflows(baseUrl?: string, type?: FlowiseFlowType): P
 }
 
 export async function getChatflow(baseUrl: string | undefined, id: string): Promise<FlowiseChatflow> {
-  const parsed = parseFlowiseChatflow(await flowiseFetch(resolveFlowiseUrl(baseUrl), `/api/v1/chatflows/${encodeURIComponent(id)}`));
+  const parsed = parseFlowiseChatflow(
+    await flowiseFetch(resolveFlowiseUrl(baseUrl), `/api/v1/chatflows/${encodeURIComponent(id)}`)
+  );
   if (!parsed) throw new FlowiseClientError('OpenIdeas returned an invalid chatflow', 502);
   return parsed;
 }
@@ -171,13 +192,17 @@ export async function predictChatflow(
   if (!request.question.trim()) {
     throw new FlowiseClientError('OpenIdeas question is required', 400);
   }
-  const raw = await flowiseFetch(resolveFlowiseUrl(baseUrl), `/api/v1/internal-prediction/${encodeURIComponent(chatflowId)}`, {
-    method: 'POST',
-    body: JSON.stringify({
-      question: request.question,
-      chatId: request.chatId,
-      streaming: false,
-    }),
-  });
+  const raw = await flowiseFetch(
+    resolveFlowiseUrl(baseUrl),
+    `/api/v1/internal-prediction/${encodeURIComponent(chatflowId)}`,
+    {
+      method: 'POST',
+      body: JSON.stringify({
+        question: request.question,
+        chatId: request.chatId,
+        streaming: false,
+      }),
+    }
+  );
   return parseFlowisePredictResult(raw);
 }

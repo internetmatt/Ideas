@@ -8,8 +8,8 @@
  */
 
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { Button, Select, Tag } from '@arco-design/web-react';
-import { ShareOne } from '@icon-park/react';
+import { Button, Message, Select, Tag } from '@arco-design/web-react';
+import { Export, Refresh, ShareOne } from '@icon-park/react';
 import { useTranslation } from 'react-i18next';
 import { ipcBridge } from '@/common';
 import type { TChatConversation } from '@/common/config/storage';
@@ -40,11 +40,13 @@ const FlowisePage: React.FC = () => {
   const [flows, setFlows] = useState<FlowiseChatflow[]>([]);
   const [selectedId, setSelectedId] = useState<string | undefined>();
   const [busy, setBusy] = useState<'chatflow' | 'agentflow' | null>(null);
+  const [frameEpoch, setFrameEpoch] = useState(0);
 
   const attachment = useMemo(() => readSessionWorkflow(conversation?.extra), [conversation]);
   const assistantName = conversation?.assistant?.name || conversation?.name || '';
   const pickerFlows = useMemo(() => flowsForPicker(flows), [flows]);
   const selected = flows.find((flow) => flow.id === selectedId);
+  const resolvedFlowType = selected?.type || attachment?.flow_type;
 
   const embedUrl = useMemo(
     () =>
@@ -52,20 +54,20 @@ const FlowisePage: React.FC = () => {
         baseUrl: flowiseUrl,
         flowId: selectedId,
         conversationId: conversation?.id,
-        flowType: selected?.type || attachment?.flow_type,
+        flowType: resolvedFlowType,
       }),
-    [flowiseUrl, selectedId, selected?.type, attachment?.flow_type, conversation?.id]
+    [flowiseUrl, selectedId, resolvedFlowType, conversation?.id]
   );
 
   const persistAttachment = useCallback(
-    async (next: SessionWorkflowAttachment) => {
+    async (next: SessionWorkflowAttachment | null) => {
       if (!conversation) return;
       await ipcBridge.conversation.update.invoke({
         id: conversation.id,
         updates: {
           extra: {
             ...(conversation.extra as Record<string, unknown>),
-            session_workflow: next,
+            session_workflow: next ?? undefined,
           } as TChatConversation['extra'],
         },
         merge_extra: true,
@@ -76,7 +78,7 @@ const FlowisePage: React.FC = () => {
               ...current,
               extra: {
                 ...(current.extra as Record<string, unknown>),
-                session_workflow: next,
+                session_workflow: next ?? undefined,
               } as TChatConversation['extra'],
             }
           : current
@@ -113,15 +115,34 @@ const FlowisePage: React.FC = () => {
     } catch {
       setFlows([]);
       setSelectedId(undefined);
+      Message.error(t('conversation.workflow.listFailed'));
     }
-  }, [conversationId, flowiseUrl]);
+  }, [conversationId, flowiseUrl, t]);
 
   useEffect(() => {
     void refresh();
   }, [refresh]);
 
+  // Persist flow_type when the full-page canvas resolves it from the flow list.
+  useEffect(() => {
+    if (!conversation || !selectedId || !selected?.type) return;
+    if (attachment?.flow_id === selectedId && attachment.flow_type === selected.type) return;
+    void persistAttachment(attachmentFromChatflow(selected, flowiseUrl));
+  }, [attachment?.flow_id, attachment?.flow_type, conversation, flowiseUrl, persistAttachment, selected, selectedId]);
+
   const onSelect = useCallback(
-    (flowId: string) => {
+    (flowId: string | undefined) => {
+      if (!flowId) {
+        setSelectedId(undefined);
+        if (conversation) {
+          void persistAttachment({
+            provider: 'flowise',
+            base_url: attachment?.base_url,
+            open_by_default: attachment?.open_by_default ?? true,
+          });
+        }
+        return;
+      }
       const flow = flows.find((item) => item.id === flowId);
       if (!flow) return;
       setSelectedId(flow.id);
@@ -129,7 +150,7 @@ const FlowisePage: React.FC = () => {
         void persistAttachment(attachmentFromChatflow(flow, flowiseUrl));
       }
     },
-    [conversation, flows, flowiseUrl, persistAttachment]
+    [attachment?.base_url, attachment?.open_by_default, conversation, flows, flowiseUrl, persistAttachment]
   );
 
   const onCreate = useCallback(
@@ -146,13 +167,22 @@ const FlowisePage: React.FC = () => {
           await persistAttachment(attachmentFromChatflow(created, flowiseUrl));
         }
       } catch {
-        // ping can succeed while create is denied
+        Message.error(t('conversation.workflow.createFailed'));
       } finally {
         setBusy(null);
       }
     },
-    [assistantName, conversation, flowiseUrl, persistAttachment]
+    [assistantName, conversation, flowiseUrl, persistAttachment, t]
   );
+
+  const onReloadFrame = useCallback(() => {
+    setFrameEpoch((epoch) => epoch + 1);
+  }, []);
+
+  const onOpenDirect = useCallback(() => {
+    if (!embedUrl) return;
+    window.open(embedUrl, '_blank', 'noopener,noreferrer');
+  }, [embedUrl]);
 
   return (
     <section className='size-full min-h-0 flex flex-col bg-1' data-testid='flowise-page'>
@@ -173,7 +203,8 @@ const FlowisePage: React.FC = () => {
             placeholder={t('conversation.workflow.selectFlow')}
             value={selectedId}
             showSearch
-            onChange={(value) => onSelect(String(value))}
+            allowClear
+            onChange={(value) => onSelect(value == null || value === '' ? undefined : String(value))}
             data-testid='flowise-flow-select'
           >
             {pickerFlows.map((flow) => (
@@ -184,6 +215,30 @@ const FlowisePage: React.FC = () => {
           </Select>
         </div>
         <div className='flex items-center gap-8px shrink-0'>
+          {selectedId && status === 'online' ? (
+            <>
+              <Button
+                size='small'
+                type='text'
+                icon={<Refresh />}
+                onClick={onReloadFrame}
+                aria-label={t('conversation.workflow.reload')}
+                data-testid='flowise-reload'
+              >
+                {t('conversation.workflow.reload')}
+              </Button>
+              <Button
+                size='small'
+                type='text'
+                icon={<Export />}
+                onClick={onOpenDirect}
+                aria-label={t('conversation.workflow.openDirect')}
+                data-testid='flowise-open-direct'
+              >
+                {t('conversation.workflow.openDirect')}
+              </Button>
+            </>
+          ) : null}
           <Button
             size='small'
             loading={busy === 'chatflow'}
@@ -207,7 +262,7 @@ const FlowisePage: React.FC = () => {
       </header>
       {selectedId && status === 'online' ? (
         <iframe
-          key={selectedId}
+          key={`${selectedId}:${resolvedFlowType ?? 'unknown'}:${frameEpoch}`}
           className='flex-1 min-h-0 w-full border-0 bg-1'
           title={selected?.name || t('conversation.workflow.canvas')}
           src={embedUrl}
