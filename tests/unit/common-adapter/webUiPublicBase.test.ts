@@ -43,7 +43,7 @@ describe('webUiPublicBase', () => {
 });
 
 describe('resolveIdeasHostShellUrl', () => {
-  it('returns null unless attach env is set', () => {
+  it('returns null unless attach env is set (dev)', () => {
     expect(resolveIdeasHostShellUrl({})).toBeNull();
   });
 
@@ -51,6 +51,16 @@ describe('resolveIdeasHostShellUrl', () => {
     expect(resolveIdeasHostShellUrl({ AIONUI_ATTACH_HOST: '1' })).toBe(
       `${DEFAULT_IDEAS_HOST_ORIGIN}${DEFAULT_IDEAS_COWORK_LOGIN_PATH}`
     );
+  });
+
+  it('defaults packaged Ideas.app onto the Projecto Ideas login plane', () => {
+    expect(resolveIdeasHostShellUrl({}, { isPackaged: true })).toBe(
+      `${DEFAULT_IDEAS_HOST_ORIGIN}${DEFAULT_IDEAS_COWORK_LOGIN_PATH}`
+    );
+  });
+
+  it('lets AIONUI_ATTACH_HOST=0 keep the bundled renderer when packaged', () => {
+    expect(resolveIdeasHostShellUrl({ AIONUI_ATTACH_HOST: '0' }, { isPackaged: true })).toBeNull();
   });
 
   it('lets AIONUI_START_URL win over attach defaults', () => {
