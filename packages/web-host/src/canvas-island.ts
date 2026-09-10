@@ -164,13 +164,6 @@ export function rewriteFlowiseIslandPayload(content: string, contentType: string
       `,{store:$1,children:$2($3,{basename:"${mount}",children:`
     );
     out = out.replace(
-    // Vite may emit bare `jsx` / `jsxs` / `/*#__PURE__*/jsx` / `createElement`, not only `R.jsx`.
-    // Without basename, RR sees `/canvas-island/v2/agentcanvas/:id` and matches nothing → blank iframe.
-    out = out.replace(
-      /,\s*\{store:([A-Za-z_$][\w$]*),children:(?:\/\*#__PURE__\*\/)?((?:[A-Za-z_$][\w$]*\.)?(?:jsxs?|createElement))\(([A-Za-z_$][\w$]*),\{children:/g,
-      `,{store:$1,children:$2($3,{basename:"${mount}",children:`
-    );
-    out = out.replace(
       /((?:\/\*#__PURE__\*\/)?(?:[A-Za-z_$][\w$]*\.)?(?:jsxs?|createElement))\(BrowserRouter,\{(?!basename:)/g,
       `$1(BrowserRouter,{basename:"${mount}",`
     );
