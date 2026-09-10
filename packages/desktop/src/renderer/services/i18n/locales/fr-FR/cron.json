@@ -54,6 +54,7 @@
     "newTask": "Nouvelle tâche",
     "createViaChat": "Créer via le chat",
     "createManually": "Créer manuellement",
+    "fromScheduledTemplate": "Depuis un modèle planifié OpenIdeas",
     "description": "Exécuter des tâches selon un calendrier. Vous pouvez aussi demander à AionUi dans n'importe quelle conversation d'en créer une.",
     "awakeBanner": "Les tâches planifiées s'exécutent uniquement quand votre ordinateur est allumé.",
     "keepAwake": "Maintenir en veille",

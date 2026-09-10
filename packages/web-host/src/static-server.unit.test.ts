@@ -140,7 +140,37 @@ describe('static-server', () => {
     expect(leaked.status).toBe(302);
     expect(leaked.headers.get('location')).toBe('/canvas-island/login');
     const ideasGet = await fetch(`${handle.localUrl}/login`, { redirect: 'manual' });
-    expect(ideasGet.status).toBe(405);
+    expect(ideasGet.status).toBe(302);
+    expect(ideasGet.headers.get('location')).toBe('/#/login');
+  });
+
+  it('forwards island-referer /assets leaks to Flowise instead of SPA HTML', async () => {
+    const flowise = await startMockBackend((req, res) => {
+      if (req.url === '/assets/Canvas-BegG6ueo.js') {
+        res.writeHead(200, { 'content-type': 'application/javascript' });
+        res.end('export const canvas=1');
+        return;
+      }
+      res.writeHead(404).end();
+    });
+    const backend = await startMockBackend((_req, res) => res.end('nope'));
+    stopBackend = async () => {
+      await flowise.close();
+      await backend.close();
+    };
+    handle = await startStaticServer({
+      staticDir,
+      backendPort: backend.port,
+      port: 0,
+      flowiseOrigin: { hostname: '127.0.0.1', port: flowise.port },
+    });
+    const leaked = await fetch(`${handle.localUrl}/assets/Canvas-BegG6ueo.js`, {
+      headers: { referer: 'http://127.0.0.1:3011/canvas-island/chatflows' },
+    });
+    expect(leaked.status).toBe(200);
+    expect(await leaked.text()).toContain('export const canvas=1');
+    const ideas = await fetch(`${handle.localUrl}/assets/main.js`);
+    expect(await ideas.text()).toContain('hi');
   });
 
   it('/api/auth/user reverse-proxies to backend (no local handler)', async () => {
@@ -512,6 +542,114 @@ describe('static-server', () => {
       const text = await r.text();
       expect(text).toContain('console.log("hi")');
       expect(text).not.toContain('__PROJECTO_INTEGRATIONS__');
+    });
+  });
+
+  describe('Projecto / Igloo login sync', () => {
+    const savedEnv: Record<string, string | undefined> = {};
+    let projecto: { port: number; close: () => Promise<void> } | null = null;
+
+    beforeEach(() => {
+      savedEnv.AIONUI_PROJECTO_SYNC = process.env.AIONUI_PROJECTO_SYNC;
+      savedEnv.PROJECTO_ORIGIN = process.env.PROJECTO_ORIGIN;
+      savedEnv.IGLOO_GATEWAY_URL = process.env.IGLOO_GATEWAY_URL;
+    });
+
+    afterEach(async () => {
+      if (savedEnv.AIONUI_PROJECTO_SYNC === undefined) delete process.env.AIONUI_PROJECTO_SYNC;
+      else process.env.AIONUI_PROJECTO_SYNC = savedEnv.AIONUI_PROJECTO_SYNC;
+      if (savedEnv.PROJECTO_ORIGIN === undefined) delete process.env.PROJECTO_ORIGIN;
+      else process.env.PROJECTO_ORIGIN = savedEnv.PROJECTO_ORIGIN;
+      if (savedEnv.IGLOO_GATEWAY_URL === undefined) delete process.env.IGLOO_GATEWAY_URL;
+      else process.env.IGLOO_GATEWAY_URL = savedEnv.IGLOO_GATEWAY_URL;
+      if (projecto) {
+        await projecto.close();
+        projecto = null;
+      }
+    });
+
+    it('injects Projecto identity + LLM presets and 302s GET /login to Igloo/Projecto continue', async () => {
+      const upstream = await startMockBackend((req, res) => {
+        if (req.url === '/health') {
+          res.writeHead(200, { 'content-type': 'text/plain' });
+          res.end('ok');
+          return;
+        }
+        if (req.url === '/api/projecto/ideas-integrations') {
+          res.writeHead(200, { 'content-type': 'application/json' });
+          res.end(
+            JSON.stringify({
+              whitelabel: 'projecto',
+              productName: 'Ideas',
+              defaultVendor: 'vllm',
+              defaultModel: 'gemma4:e4b',
+              models: [{ id: 'PAIR', label: 'PAIR (Projecto local)', vendor: 'pair', modality: 'chat', fallback: true }],
+              pair: { id: 'PAIR', label: 'PAIR (Projecto local)', baseUrl: 'http://127.0.0.1:8787/v1' },
+              projectoLoginUrl: 'http://127.0.0.1:4715/api/auth/continue',
+              identity: { sub: 'projecto-operator', email: 'operator@projecto.local' },
+            })
+          );
+          return;
+        }
+        res.writeHead(404).end();
+      });
+      projecto = upstream;
+      process.env.AIONUI_PROJECTO_SYNC = '1';
+      process.env.PROJECTO_ORIGIN = `http://127.0.0.1:${upstream.port}`;
+      process.env.IGLOO_GATEWAY_URL = `http://127.0.0.1:${upstream.port}`;
+
+      const backend = await startMockBackend((_req, res) => res.end('nope'));
+      stopBackend = backend.close;
+      handle = await startStaticServer({ staticDir, backendPort: backend.port, port: 0 });
+
+      const html = await fetch(`${handle.localUrl}/`);
+      const text = await html.text();
+      expect(text).toContain('__PROJECTO_INTEGRATIONS__');
+      expect(text).toContain('"whitelabel":"projecto"');
+      expect(text).toContain('"id":"PAIR"');
+      expect(text).toContain('operator@projecto.local');
+
+      const login = await fetch(`${handle.localUrl}/login`, { redirect: 'manual' });
+      expect(login.status).toBe(302);
+      const location = login.headers.get('location') || '';
+      expect(location).toContain('/api/auth/continue');
+      expect(location).toContain(encodeURIComponent(`${handle.localUrl}/#/guid`));
+    });
+
+    it('does not call back to Projecto when already behind the cowork proxy', async () => {
+      let ideasIntegrationsHits = 0;
+      const upstream = await startMockBackend((req, res) => {
+        if (req.url === '/api/projecto/ideas-integrations') {
+          ideasIntegrationsHits += 1;
+          res.writeHead(200, { 'content-type': 'application/json' });
+          res.end(JSON.stringify({ productName: 'should-not-inject' }));
+          return;
+        }
+        res.writeHead(404).end();
+      });
+      projecto = upstream;
+      process.env.AIONUI_PROJECTO_SYNC = '1';
+      process.env.PROJECTO_ORIGIN = `http://127.0.0.1:${upstream.port}`;
+
+      const backend = await startMockBackend((_req, res) => res.end('nope'));
+      stopBackend = backend.close;
+      handle = await startStaticServer({ staticDir, backendPort: backend.port, port: 0 });
+
+      const html = await fetch(`${handle.localUrl}/`, {
+        headers: { 'x-forwarded-host': '127.0.0.1:4715' },
+      });
+      const text = await html.text();
+      expect(html.status).toBe(200);
+      expect(text).toContain('<title>root</title>');
+      expect(text).not.toContain('__PROJECTO_INTEGRATIONS__');
+      expect(ideasIntegrationsHits).toBe(0);
+
+      const login = await fetch(`${handle.localUrl}/login`, {
+        redirect: 'manual',
+        headers: { 'x-forwarded-host': '127.0.0.1:4715' },
+      });
+      expect(login.status).toBe(302);
+      expect(login.headers.get('location')).toBe('/#/login');
     });
   });
 });

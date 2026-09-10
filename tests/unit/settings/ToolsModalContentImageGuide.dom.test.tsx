@@ -40,6 +40,10 @@ vi.mock('@/renderer/pages/settings/ToolsSettings/McpServerItem', () => ({
   default: () => null,
 }));
 
+vi.mock('@/renderer/pages/settings/ToolsSettings/OpenIdeasToolsSection', () => ({
+  default: () => <div data-testid='openideas-tools'>OpenIdeas tools</div>,
+}));
+
 vi.mock('@/renderer/hooks/agent/useConfigModelListWithImage', () => ({
   default: () => ({ modelListWithImage: hooks.modelListWithImage }),
 }));
@@ -144,5 +148,10 @@ describe('ToolsModalContent image model guide', () => {
       (a) => a.textContent === 'settings.goToModelSettings'
     );
     expect(links).toHaveLength(0);
+  });
+
+  it('hosts the OpenIdeas tools section on the Ideas Tools page', async () => {
+    render(<ToolsModalContent />);
+    expect(await screen.findByTestId('openideas-tools')).toBeTruthy();
   });
 });

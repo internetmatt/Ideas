@@ -1345,6 +1345,8 @@
   "talkToButler": {
     "createViaChat": "Criar via chat",
     "createManually": "Criar manualmente",
+    "fromAgentFlowTemplate": "A partir de um modelo de agent flow",
+    "createAgentFlowOnCanvas": "Criar agent flow no canvas",
     "addViaChat": "Adicionar via chat",
     "addManually": "Adicionar manualmente",
     "solveViaChat": "Resolver via chat",

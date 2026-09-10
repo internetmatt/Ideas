@@ -154,7 +154,7 @@ const Titlebar: React.FC<TitlebarProps> = ({ workspaceAvailable }) => {
   const feedbackTooltip = t('conversation.welcome.quickActionFeedback', { defaultValue: 'Report Issue' });
   const isSettingsRoute = location.pathname.startsWith('/settings');
   const iconSize = 18;
-  const flowiseTooltip = t('settings.flowise.titlebarTooltip', { defaultValue: 'Flowise settings' });
+  const flowiseTooltip = t('settings.flowise.titlebarTooltip', { defaultValue: 'Canvas settings' });
   // Desktop uses slimmer strokes to match macOS-native chrome aesthetics;
   // mobile keeps the default weight so icons stay legible at larger sizes.
   const desktopIconStroke = layout?.isMobile ? undefined : 2.5;
@@ -425,7 +425,7 @@ const Titlebar: React.FC<TitlebarProps> = ({ workspaceAvailable }) => {
         <button
           type='button'
           className={classNames('app-titlebar__button', layout?.isMobile && 'app-titlebar__button--mobile')}
-          onClick={() => void navigate('/settings/flowise')}
+          onClick={() => void navigate('/settings/canvas')}
           aria-label={flowiseTooltip}
           title={flowiseTooltip}
           data-testid='titlebar-flowise-gear'

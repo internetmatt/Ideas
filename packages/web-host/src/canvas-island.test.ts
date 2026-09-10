@@ -1,14 +1,17 @@
 import { describe, expect, it } from 'vitest';
 import {
   canvasIslandRedirect,
+  isCanvasIslandUrl,
+  isFlowiseAssetStolenByIdeas,
   isFlowiseSpaLeakPath,
   isIslandAuthDocumentRequest,
   islandUpstreamHeaders,
   parseFlowiseOrigin,
   rewriteFlowiseIslandPayload,
   rewriteIslandLocation,
-} from './canvas-island.js';
+  stripCanvasIslandPath,
   widenFrameAncestorsForIsland,
+} from './canvas-island.js';
 
 describe('islandUpstreamHeaders', () => {
   it('marks OpenIdeas island fetches as internal so the canvas is not 401', () => {
@@ -19,7 +22,6 @@ describe('islandUpstreamHeaders', () => {
   });
 });
 
-describe('rewriteFlowiseIslandPayload', () => {
 describe('widenFrameAncestorsForIsland', () => {
   const fleetPolicy = 'frame-ancestors http://127.0.0.1:3011 http://localhost:3011 http://127.0.0.1:4715 http://localhost:4715';
 
@@ -51,6 +53,7 @@ describe('widenFrameAncestorsForIsland', () => {
   });
 });
 
+describe('rewriteFlowiseIslandPayload', () => {
   it('rewrites root-absolute assets on the island HTML', () => {
     const html = rewriteFlowiseIslandPayload(
       '<html><head><title>Flowise - Build AI Agents, Visually</title></head><body><script src="/assets/index.js"></script></body></html>',
@@ -60,6 +63,10 @@ describe('widenFrameAncestorsForIsland', () => {
     expect(html).toContain('src="/canvas-island/assets/index.js"');
     expect(html).toContain('<base href="/canvas-island/">');
     expect(html).toContain('<title>OpenIdeas</title>');
+    expect(html).toContain('data-ideas-island-shell');
+    expect(html).toContain('.MuiDrawer-root');
+    expect(html).toContain('header.MuiAppBar-root');
+    expect(html).not.toContain('[class*="ChatPopUp"]');
   });
 
   it('prefixes window.open templates but leaves RR route paths alone', () => {
@@ -97,13 +104,65 @@ describe('widenFrameAncestorsForIsland', () => {
     expect(js).toContain('ik={basename:""}');
     expect(js).not.toContain('ik={basename:"/canvas-island"}');
   });
+
+  it('rewrites Vite mapDeps relative assets so preload hits the island', () => {
+    const js = rewriteFlowiseIslandPayload(
+      [
+        '__vite__mapDeps.viteFileDeps=["assets/Canvas-BegG6ueo.js","assets/style-DI6oCUg0.css"]',
+        'const Mlt=function(e){return"/"+e}',
+        'src="/assets/index-ByFv94x0.js"',
+      ].join(';'),
+      'application/javascript',
+      '/assets/index.js'
+    );
+    expect(js).toContain('"canvas-island/assets/Canvas-BegG6ueo.js"');
+    expect(js).toContain('"canvas-island/assets/style-DI6oCUg0.css"');
+    expect(js).toContain('src="/canvas-island/assets/index-ByFv94x0.js"');
+    expect(js).toContain('return"/"+e');
+  });
+
+  it('does not double-prefix already-island absolute assets', () => {
+    const js = rewriteFlowiseIslandPayload(
+      'href="/canvas-island/assets/style.css";deps=["assets/Chunk.js"]',
+      'application/javascript',
+      '/assets/index.js'
+    );
+    expect(js).toContain('href="/canvas-island/assets/style.css"');
+    expect(js).not.toContain('/canvas-island/canvas-island/');
+    expect(js).toContain('"canvas-island/assets/Chunk.js"');
+  });
 });
+
+describe('isFlowiseAssetStolenByIdeas', () => {
+  it('forwards island-referer /assets leaks to Flowise', () => {
+    expect(
+      isFlowiseAssetStolenByIdeas('/assets/Canvas-BegG6ueo.js', 'http://127.0.0.1:3011/canvas-island/chatflows')
+    ).toBe(true);
+    expect(isFlowiseAssetStolenByIdeas('/assets/main.js', 'http://127.0.0.1:3011/#/settings')).toBe(false);
+    expect(isFlowiseAssetStolenByIdeas('/api/v1/ping', 'http://127.0.0.1:3011/canvas-island/')).toBe(false);
+  });
+});
+describe('canvas island routing', () => {
   it('recognizes Flowise SPA paths that Ideas HashRouter never owns', () => {
     expect(isFlowiseSpaLeakPath('/v2/agentcanvas/abc')).toBe(true);
     expect(isFlowiseSpaLeakPath('/chatflows')).toBe(true);
+    expect(isFlowiseSpaLeakPath('/apikey')).toBe(true);
+    expect(isFlowiseSpaLeakPath('/document-stores')).toBe(true);
+    expect(isFlowiseSpaLeakPath('/marketplaces')).toBe(true);
+    expect(isFlowiseSpaLeakPath('/account')).toBe(true);
     expect(isFlowiseSpaLeakPath('/api/v1/ping')).toBe(false);
     expect(isFlowiseSpaLeakPath('/login')).toBe(false);
     expect(canvasIslandRedirect('/v2/agentcanvas/abc?x=1')).toBe('/canvas-island/v2/agentcanvas/abc?x=1');
+  });
+
+  it('keeps island API paths on the OpenIdeas proxy, not Ideas /api/v1', () => {
+    expect(isCanvasIslandUrl('/canvas-island/api/v1/apikey')).toBe(true);
+    expect(isCanvasIslandUrl('/canvas-island/api/v1/document-store/store')).toBe(true);
+    expect(isCanvasIslandUrl('/canvas-island/api/v1/marketplaces/templates')).toBe(true);
+    expect(stripCanvasIslandPath('/canvas-island/api/v1/apikey')).toBe('/api/v1/apikey');
+    expect(stripCanvasIslandPath('/canvas-island/api/v1/document-store/store')).toBe('/api/v1/document-store/store');
+    expect(stripCanvasIslandPath('/canvas-island/api/v1/marketplaces/templates')).toBe('/api/v1/marketplaces/templates');
+    expect(isFlowiseSpaLeakPath('/canvas-island/api/v1/apikey')).toBe(false);
   });
 
   it('only steals GET /login when the island iframe issued it', () => {

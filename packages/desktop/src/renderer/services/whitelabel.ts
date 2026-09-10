@@ -20,6 +20,8 @@ declare global {
     /** Injected by the Projecto shell before the renderer boots. */
     __PROJECTO_INTEGRATIONS__?: {
       flowiseUrl?: string;
+      ideasHostedUrl?: string;
+      ideas?: { hostedUrl?: string };
       /** Profile id — see WHITELABEL_PROFILES. */
       whitelabel?: string;
       /** Visible product name (e.g. "OfficeCLI AI"). */
@@ -36,6 +38,21 @@ declare global {
       sharedAgentsUrl?: string;
       /** Projecto web login when local AionUI login is disabled. */
       projectoLoginUrl?: string;
+      defaultVendor?: string;
+      defaultModel?: string;
+      models?: Array<{
+        id: string;
+        label: string;
+        vendor: string;
+        modality?: 'chat' | 'voice' | 'image' | 'video';
+        baseUrl?: string;
+        fallback?: boolean;
+      }>;
+      pair?: { id?: string; label?: string; baseUrl?: string };
+      defaultsByModality?: Partial<
+        Record<'chat' | 'voice' | 'image' | 'video', { vendor?: string; model?: string }>
+      >;
+      iglooUrl?: string;
       /** Phase 1 — verified identity from Projecto JWT (never WP creds). */
       identity?: {
         sub?: string;

@@ -203,15 +203,17 @@ export const AuthProvider: React.FC<React.PropsWithChildren> = ({ children }) =>
 
   const login = useCallback(async ({ username, password, remember }: LoginParams): Promise<LoginResult> => {
     try {
-      // Under a host shell, local passwords are not the IdP — bounce to host login.
-      // Standalone :3011 must keep Ideas /login (remembered session).
+      // Under a host shell (cowork or :3011 synced from Igloo/Projecto), local
+      // passwords are not the IdP — bounce to Projecto /api/auth/continue.
       if (isProjectoHostedShell()) {
         const returnTo = window.location.href;
         const loginBase =
           (window.__PROJECTO_INTEGRATIONS__ as { projectoLoginUrl?: string })?.projectoLoginUrl ||
-          'http://projecto.localhost/apps/projecto-web/';
+          'http://127.0.0.1:4715/api/auth/continue';
         const url = new URL(loginBase);
-        url.searchParams.set('login', '1');
+        if (!url.pathname.endsWith('/continue')) {
+          url.searchParams.set('login', '1');
+        }
         url.searchParams.set('return', returnTo);
         window.location.href = url.toString();
         return { success: false, message: 'Redirecting to host login…', code: 'unknown' };

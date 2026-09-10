@@ -16,6 +16,14 @@ export {
 } from './backend-launcher.js';
 export type { BackendDirConfig, BackendLaunchOptions, BackendHandle, BackendStartOptions } from './backend-launcher.js';
 
+export {
+  ensureOpenIdeas,
+  healOpenIdeasAppleContainer,
+  openIdeasPingUrl,
+  pingOpenIdeas,
+} from './openideas-ensure.js';
+export type { OpenIdeasEnsureOptions, OpenIdeasEnsureResult } from './openideas-ensure.js';
+
 /**
  * Start WebHost (main entry point).
  *
@@ -27,6 +35,7 @@ export type { BackendDirConfig, BackendLaunchOptions, BackendHandle, BackendStar
 export async function startWebHost(opts: WebHostOptions): Promise<WebHostHandle> {
   const { startBackend } = await import('./backend-launcher.js');
   const { startStaticServer } = await import('./static-server.js');
+  const { ensureOpenIdeas } = await import('./openideas-ensure.js');
 
   // 1. Start backend (M4)
   let backendHandle;
@@ -63,7 +72,28 @@ export async function startWebHost(opts: WebHostOptions): Promise<WebHostHandle>
     throw err;
   }
 
-  // 3. Return combined handle
+  // 3. Canvas / OpenIdeas — Ideas is ready only when the island upstream is up
+  // (or we exhausted ensure). Skip with AIONUI_OPENIDEAS_ENSURE=0 for unit hosts.
+  let openIdeas;
+  if (process.env.AIONUI_OPENIDEAS_ENSURE !== '0') {
+    try {
+      openIdeas = await ensureOpenIdeas();
+      if (openIdeas.ok) {
+        console.log(
+          `[webui] OpenIdeas online at http://${openIdeas.origin.hostname}:${openIdeas.origin.port} (${openIdeas.detail})`
+        );
+      } else {
+        console.warn(
+          `[webui] OpenIdeas offline at http://${openIdeas.origin.hostname}:${openIdeas.origin.port}: ${openIdeas.detail}`
+        );
+      }
+    } catch (err) {
+      console.warn('[webui] OpenIdeas ensure failed:', err instanceof Error ? err.message : err);
+      openIdeas = undefined;
+    }
+  }
+
+  // 4. Return combined handle
   return {
     port: staticHandle.port,
     backendPort: backendHandle.port,
@@ -71,6 +101,7 @@ export async function startWebHost(opts: WebHostOptions): Promise<WebHostHandle>
     localUrl: staticHandle.localUrl,
     networkUrl: staticHandle.networkUrl,
     lanIP: staticHandle.lanIP,
+    openIdeas,
     async stop() {
       await staticHandle.stop();
       await backendHandle.stop();

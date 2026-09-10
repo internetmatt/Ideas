@@ -33,7 +33,16 @@ describe('resolveFlowiseUrl / buildFlowiseEmbedUrl', () => {
         flowId: 'flow-1',
         conversationId: 'conv-9',
       })
-    ).toBe('http://flowise.example:3010/v2/agentcanvas/flow-1?conversationId=conv-9');
+    ).toBe('http://flowise.example:3010/canvas/flow-1?conversationId=conv-9');
+    expect(
+      buildFlowiseEmbedUrl({
+        baseUrl: 'http://flowise.example:3010',
+        flowId: 'flow-1',
+        flowType: 'AGENTFLOW',
+      })
+    ).toBe('http://flowise.example:3010/v2/agentcanvas/flow-1');
+    expect(buildFlowiseEmbedUrl({ baseUrl: 'http://flowise.example:3010' })).toBe('');
+    expect(buildFlowiseEmbedUrl({ flowId: 'undefined' })).toBe('');
   });
 
   it('maps loopback :3010 onto the same-origin island in WebUI', () => {
@@ -47,7 +56,7 @@ describe('resolveFlowiseUrl / buildFlowiseEmbedUrl', () => {
       expect(resolveFlowiseUrl('http://127.0.0.1:3010')).toBe(CANVAS_ISLAND_MOUNT);
       expect(resolveFlowiseUrl('http://localhost:3010/')).toBe(CANVAS_ISLAND_MOUNT);
       expect(buildFlowiseEmbedUrl({ baseUrl: 'http://127.0.0.1:3010', flowId: 'flow-1' })).toBe(
-        '/canvas-island/v2/agentcanvas/flow-1'
+        '/canvas-island/canvas/flow-1'
       );
     } finally {
       if (previous === undefined) {

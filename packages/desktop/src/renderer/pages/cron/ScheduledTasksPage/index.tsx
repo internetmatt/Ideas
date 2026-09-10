@@ -142,11 +142,21 @@ const ScheduledTasksPage: React.FC = () => {
                   />
                 )}
                 <TalkToButlerButton
+                  data-testid='btn-new-task'
                   label={t('cron.page.newTask')}
                   onChat={handleCreateViaChat}
                   chatLabel={t('cron.page.createViaChat')}
                   onManual={handleCreateManually}
                   manualLabel={t('cron.page.createManually')}
+                  extraActions={[
+                    {
+                      key: 'scheduled-template',
+                      label: t('cron.page.fromScheduledTemplate'),
+                      onClick: () => {
+                        void navigate('/settings/marketplaces?kind=AGENTFLOW&scheduled=1');
+                      },
+                    },
+                  ]}
                 />
               </>
             }

@@ -17,6 +17,7 @@ import { FEEDBACK_MODULES } from '@/common/types/feedbackDiagnostics';
 describe('resolveFeedbackModule', () => {
   it.each([
     ['/conversation/abc-123', 'conversation-session'],
+    ['/canvas', 'conversation-session'],
     ['/flowise', 'conversation-session'],
     ['/team/team-1', 'agent-team'],
     ['/scheduled', 'scheduled-task'],
@@ -32,6 +33,8 @@ describe('resolveFeedbackModule', () => {
     ['/settings/appearance', 'display-desktop'],
     ['/settings/pet', 'display-desktop'],
     ['/settings/webui', 'webui-remote'],
+    ['/settings/canvas', 'conversation-session'],
+    ['/settings/canvas/credentials', 'conversation-session'],
     ['/settings/flowise', 'conversation-session'],
     ['/settings/ext/telegram', 'channel'],
     ['/settings/system', 'system-settings'],
@@ -60,7 +63,7 @@ describe('resolveFeedbackModule', () => {
     );
     // Pages where preselecting a module makes no sense (multi-purpose or
     // pre-auth surfaces where the user picks the module themselves).
-    const moduleLess = new Set(['/guid', '/login', '/test/components', '/canvas']);
+    const moduleLess = new Set(['/guid', '/login', '/test/components']);
     const paths = [...routerSrc.matchAll(/path='([^*'][^']*)'/g)].map((m) => m[1]);
     expect(paths.length).toBeGreaterThan(10);
     for (const routePath of paths) {

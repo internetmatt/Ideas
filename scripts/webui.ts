@@ -38,6 +38,10 @@
  *                           build, since install/diagnostic copy names it.
  *   AIONUI_WHITELABEL      : local stand-in for window.__PROJECTO_INTEGRATIONS__.whitelabel
  *                           (theme/channel allowlist profile id, e.g. "projecto").
+ *   AIONUI_PROJECTO_SYNC   : "1" to pull Projecto/Igloo identity + LLM presets into
+ *                           :3011 (default on outside Vitest). "0" keeps standalone
+ *                           AionUi /#/login. PROJECTO_ORIGIN / IGLOO_GATEWAY_URL pin
+ *                           the upstreams (defaults :4715 / :9000).
  *   AIONUI_BACKEND_PORT_TIMEOUT_MS : ms to wait for aioncore's AIONCORE_LISTENING
  *                           stdout line before giving up (default 30000). Raise this
  *                           on a host under heavy disk contention (e.g. Time Machine
@@ -291,6 +295,12 @@ async function main(): Promise<void> {
   console.log('AionUi WebUI is ready');
   console.log(`  Local  : ${handle.localUrl}`);
   if (handle.networkUrl) console.log(`  Network: ${handle.networkUrl}`);
+  if (handle.openIdeas) {
+    const oi = handle.openIdeas;
+    console.log(
+      `  Canvas : ${oi.ok ? 'online' : 'OFFLINE'} (OpenIdeas http://${oi.origin.hostname}:${oi.origin.port}) — ${oi.detail}`
+    );
+  }
 
   // If SQLite has no admin yet (fresh install), seed one via backend and print
   // the plaintext credentials. Mirrors webuiBridge.ts:maybeSeedInitialPassword

@@ -4,7 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import AppLoader from '@renderer/components/layout/AppLoader';
 import { changeLanguage } from '@/renderer/services/i18n';
 import { resolveBrandProductName } from '@renderer/services/whitelabel';
-import { useAuth } from '../../hooks/context/AuthContext';
+import { isProjectoHostedShell, useAuth } from '../../hooks/context/AuthContext';
 import IdeasWordmark from './IdeasWordmark';
 import LoginField from './LoginField';
 import { LOGIN_FIELDS } from './loginForm';
@@ -19,6 +19,7 @@ const LoginPage: React.FC = () => {
   const { t, i18n } = useTranslation();
   const navigate = useNavigate();
   const { status, login } = useAuth();
+  const projectoHosted = isProjectoHostedShell();
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -52,8 +53,20 @@ const LoginPage: React.FC = () => {
     if (mode === 'test') {
       return;
     }
+    if (projectoHosted && status === 'unauthenticated') {
+      const returnTo = `${window.location.origin}/#/guid`;
+      const loginBase =
+        window.__PROJECTO_INTEGRATIONS__?.projectoLoginUrl || 'http://127.0.0.1:4715/api/auth/continue';
+      const url = new URL(loginBase);
+      if (!url.pathname.endsWith('/continue')) {
+        url.searchParams.set('login', '1');
+      }
+      url.searchParams.set('return', returnTo);
+      window.location.replace(url.toString());
+      return;
+    }
     emailRef.current?.focus();
-  }, []);
+  }, [projectoHosted, status]);
 
   const clearMessageLater = useCallback(() => {
     if (messageTimer.current) {
@@ -142,7 +155,7 @@ const LoginPage: React.FC = () => {
     [email, login, navigate, password, showMessage, t]
   );
 
-  if (status === 'checking') {
+  if (status === 'checking' || (projectoHosted && status === 'unauthenticated')) {
     return <AppLoader />;
   }
 

@@ -12,6 +12,12 @@ import http, { type IncomingMessage, type ServerResponse } from 'node:http';
 
 export const CANVAS_ISLAND_MOUNT = '/canvas-island';
 
+/** Hide Flowise's own app chrome — Ideas already has nav and files. Keep ChatPopUp so the canvas chat can overlay the node editor. */
+export const ISLAND_SHELL_CSS = `<style data-ideas-island-shell>
+.MuiDrawer-root,header.MuiAppBar-root,.MuiAppBar-root{display:none!important}
+main{margin:0!important;margin-top:0!important;margin-left:0!important;width:100%!important;padding:0!important;min-height:100vh}
+</style>`;
+
 /** Flowise UI paths. Ideas uses HashRouter, so these are never Ideas routes. */
 const FLOWISE_SPA_PREFIXES = [
   '/v2',
@@ -123,6 +129,21 @@ export function isFlowiseApiStolenByIdeas(url: string, referer: string | undefin
   }
 }
 
+/**
+ * Vite preloads that still resolve to Ideas `/assets/*` (missed rewrite, stale
+ * tab) must not hit the SPA fallback — SW then returns Response.error().
+ */
+export function isFlowiseAssetStolenByIdeas(url: string, referer: string | undefined): boolean {
+  const path = url.split('?')[0].split('#')[0];
+  if (!path.startsWith('/assets/')) return false;
+  if (!referer) return false;
+  try {
+    return new URL(referer).pathname.startsWith(CANVAS_ISLAND_MOUNT);
+  } catch {
+    return referer.includes(CANVAS_ISLAND_MOUNT);
+  }
+}
+
 export function shouldRewriteIslandBody(contentType: string, requestPath: string): boolean {
   const ct = contentType.toLowerCase();
   return (
@@ -166,6 +187,12 @@ export function rewriteFlowiseIslandPayload(content: string, contentType: string
     );
     out = out.replaceAll('"/assets/', `"${mount}/assets/`);
     out = out.replaceAll("'/assets/", `'${mount}/assets/`);
+    // Vite `__vite__mapDeps` emits relative `"assets/foo-hash.js"` and the
+    // preload helper does `return "/"+e` → `/assets/...` on the Ideas origin
+    // (SPA HTML + SW type-guard → net::ERR_FAILED). Prefix without a leading
+    // slash so `"/"+dep` becomes `/canvas-island/assets/...`.
+    out = out.replaceAll('"assets/', `"${mount.slice(1)}/assets/`);
+    out = out.replaceAll("'assets/", `'${mount.slice(1)}/assets/`);
     for (const route of ['/v2/agentcanvas', '/agentcanvas', '/canvas', '/v2/marketplace', '/chatflows', '/marketplace']) {
       out = out.replaceAll(`\`${route}/\${`, `\`${mount}${route}/\${`);
     }
@@ -180,6 +207,9 @@ export function rewriteFlowiseIslandPayload(content: string, contentType: string
       out = out.replace(/<head([^>]*)>/i, `<head$1><base href="${mount}/">`);
     }
     out = out.replace(/<title>[^<]*<\/title>/i, '<title>OpenIdeas</title>');
+    if (!out.includes('data-ideas-island-shell')) {
+      out = out.replace(/<head([^>]*)>/i, `<head$1>${ISLAND_SHELL_CSS}`);
+    }
   }
   return out;
 }
@@ -221,36 +251,6 @@ export function islandUpstreamHeaders(
   };
 }
 
-export function forwardToFlowiseIsland(
-  req: IncomingMessage,
-  res: ServerResponse,
-  origin: FlowiseOrigin,
-  upstreamPath = stripCanvasIslandPath(req.url || '/')
-): void {
-  const headers = islandUpstreamHeaders(req.headers, origin);
-  const options: http.RequestOptions = {
-    hostname: origin.hostname,
-    port: origin.port,
-    path: upstreamPath,
-    method: req.method,
-    headers,
-  };
-
-  const proxy = http.request(options, (proxyRes) => {
-    const contentType = String(proxyRes.headers['content-type'] || '');
-    const location = proxyRes.headers.location;
-    if (typeof location === 'string') {
-      proxyRes.headers.location = rewriteIslandLocation(location, origin);
-    }
-    if (!shouldRewriteIslandBody(contentType, upstreamPath)) {
-      res.writeHead(proxyRes.statusCode ?? 502, proxyRes.headers);
-      proxyRes.pipe(res);
-      return;
-    }
-
-    const chunks: Buffer[] = [];
-    proxyRes.on('data', (chunk) => chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk)));
-    proxyRes.on('end', () => {
 /**
  * Flowise pins `frame-ancestors` to whatever `IFRAME_ORIGINS` names on the
  * engine container (the fleet lists :3011 and :4715). The island is framed by
@@ -279,6 +279,40 @@ export function widenFrameAncestorsForIsland(csp: string | string[] | undefined)
     .join(';');
 }
 
+export function forwardToFlowiseIsland(
+  req: IncomingMessage,
+  res: ServerResponse,
+  origin: FlowiseOrigin,
+  upstreamPath = stripCanvasIslandPath(req.url || '/')
+): void {
+  const headers = islandUpstreamHeaders(req.headers, origin);
+  const options: http.RequestOptions = {
+    hostname: origin.hostname,
+    port: origin.port,
+    path: upstreamPath,
+    method: req.method,
+    headers,
+  };
+
+  const proxy = http.request(options, (proxyRes) => {
+    const contentType = String(proxyRes.headers['content-type'] || '');
+    const location = proxyRes.headers.location;
+    if (typeof location === 'string') {
+      proxyRes.headers.location = rewriteIslandLocation(location, origin);
+    }
+    const csp = proxyRes.headers['content-security-policy'];
+    if (csp !== undefined) {
+      proxyRes.headers['content-security-policy'] = widenFrameAncestorsForIsland(csp);
+    }
+    if (!shouldRewriteIslandBody(contentType, upstreamPath)) {
+      res.writeHead(proxyRes.statusCode ?? 502, proxyRes.headers);
+      proxyRes.pipe(res);
+      return;
+    }
+
+    const chunks: Buffer[] = [];
+    proxyRes.on('data', (chunk) => chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk)));
+    proxyRes.on('end', () => {
       const body = rewriteFlowiseIslandPayload(Buffer.concat(chunks).toString('utf8'), contentType, upstreamPath);
       const headersOut = { ...proxyRes.headers };
       delete headersOut['content-length'];
@@ -300,8 +334,4 @@ export function widenFrameAncestorsForIsland(csp: string | string[] | undefined)
     }
   });
   req.pipe(proxy);
-    const csp = proxyRes.headers['content-security-policy'];
-    if (csp !== undefined) {
-      proxyRes.headers['content-security-policy'] = widenFrameAncestorsForIsland(csp);
-    }
 }

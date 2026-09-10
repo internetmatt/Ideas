@@ -801,6 +801,10 @@
   },
   "workflow": {
     "canvas": "Canvas",
+    "overlay": "Canvas chat",
+    "toggleOverlay": "Overlay canvas chat on this conversation",
+    "expandOverlay": "Expand overlay",
+    "collapseOverlay": "Collapse overlay",
     "sessionCanvas": "Session canvas",
     "toggle": "Toggle session workflow canvas",
     "reload": "Reload",

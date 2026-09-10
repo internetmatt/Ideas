@@ -5,8 +5,9 @@
  */
 
 import { describe, expect, it } from 'vitest';
-import { readSessionWorkflow } from '@/renderer/pages/conversation/Workflow/sessionWorkflow';
+import { readSessionWorkflow, sessionWorkflowPatch } from '@/renderer/pages/conversation/Workflow/sessionWorkflow';
 import {
+  buildFlowiseChatbotUrl,
   buildFlowiseEmbedUrl,
   DEFAULT_FLOWISE_URL,
   resolveFlowiseUrl,
@@ -36,6 +37,19 @@ describe('readSessionWorkflow', () => {
       open_by_default: true,
     });
   });
+
+  it('patches only session_workflow so skills stay off the wire', () => {
+    const next = {
+      provider: 'flowise' as const,
+      flow_id: 'abc',
+      open_by_default: true,
+    };
+    expect(sessionWorkflowPatch(next)).toEqual({
+      extra: { session_workflow: next },
+      merge_extra: true,
+    });
+    expect(sessionWorkflowPatch(null)).toEqual({ extra: {}, merge_extra: true });
+  });
 });
 
 describe('resolveFlowiseUrl / buildFlowiseEmbedUrl', () => {
@@ -56,5 +70,15 @@ describe('resolveFlowiseUrl / buildFlowiseEmbedUrl', () => {
         conversationId: 'conv-9',
       })
     ).toBe('http://flowise.example:3010/canvas/flow-1?conversationId=conv-9');
+  });
+
+  it('scopes chatbot overlay URLs to a flow and conversation', () => {
+    expect(
+      buildFlowiseChatbotUrl({
+        baseUrl: 'http://flowise.example:3010',
+        flowId: 'flow-1',
+        conversationId: 'conv-9',
+      })
+    ).toBe('http://flowise.example:3010/chatbot/flow-1?conversationId=conv-9');
   });
 });
