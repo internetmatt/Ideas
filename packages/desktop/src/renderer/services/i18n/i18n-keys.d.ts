@@ -1087,6 +1087,7 @@ export type I18nKey =
   | 'guid.workspace.specifyWorkspace'
   | 'guid.workspace.workInProject'
   | 'login.brand'
+  | 'login.email'
   | 'login.errors.empty'
   | 'login.errors.invalidCredentials'
   | 'login.errors.networkError'

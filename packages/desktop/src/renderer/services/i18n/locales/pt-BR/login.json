@@ -3,7 +3,7 @@
   "brand": "AionUi",
   "subtitle": "Bem-vindo de volta, por favor entre na sua conta",
   "username": "Nome de usuário",
-  "usernamePlaceholder": "Digite seu nome de usuário",
+  "usernamePlaceholder": "Nome de usuário",
   "password": "Senha",
   "passwordPlaceholder": "Digite sua senha",
   "rememberMe": "Lembrar-me",
@@ -16,11 +16,12 @@
   "footerPrimary": "Transforme sua IA de linha de comando",
   "footerSecondary": "Moderno e Eficiente",
   "errors": {
-    "empty": "Por favor, insira nome de usuário e senha",
+    "empty": "Digite seu nome de usuário e senha",
     "invalidCredentials": "Nome de usuário ou senha inválidos",
     "tooManyAttempts": "Muitas tentativas, por favor tente novamente mais tarde",
     "networkError": "Falha na conexão, por favor tente novamente",
     "serverError": "Erro no servidor, por favor tente novamente mais tarde",
     "unknown": "O login falhou, por favor tente novamente"
-  }
+  },
+  "email": "Nome de usuário"
 }
