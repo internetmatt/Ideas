@@ -33,6 +33,7 @@
  */
 
 import { resolveCoreCsrfToken } from './httpBridge';
+import { webUiPath } from './webUiPublicBase';
 
 /** WebSocket close code the backend uses for auth policy violations (RFC 6455 §7.4.1). */
 export const WS_CLOSE_POLICY_VIOLATION = 1008;
@@ -89,7 +90,7 @@ async function performRefresh(): Promise<boolean> {
     if (csrfToken) {
       headers['x-csrf-token'] = csrfToken;
     }
-    const response = await fetch(REFRESH_ENDPOINT, {
+    const response = await fetch(webUiPath(REFRESH_ENDPOINT), {
       method: 'POST',
       // Same-origin request: the browser attaches the HttpOnly refresh cookie
       // (scoped to Path=/api/auth/refresh). No body is needed — the backend reads
