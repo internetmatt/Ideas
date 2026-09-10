@@ -32,6 +32,12 @@ import { useProvidersQuery } from '@/renderer/hooks/agent/useModelProviderList';
 import { useSettingsViewMode } from '../settingsViewContext';
 import SettingsPageHeader from '@/renderer/pages/settings/components/SettingsPageHeader';
 import { consumePendingDeepLink } from '@/renderer/hooks/system/useDeepLink';
+import {
+  pickPreferredSystemSeed,
+  resolveSystemProviderSeeds,
+  systemSeedToDeepLinkPrefill,
+  systemSeedToProvider,
+} from '@/renderer/services/systemModelRuntime';
 import '../model-provider.css';
 
 /**
@@ -319,8 +325,40 @@ const ModelModalContent: React.FC = () => {
     const pending = consumePendingDeepLink();
     if (pending) {
       addPlatformModalCtrl.open({ deepLinkData: pending });
+      return;
     }
-  }, [addPlatformModalCtrl]);
+    // Ideas Admin / Projecto runtime: open add-provider prefilled with the
+    // preferred system model when the catalog is still empty.
+    const preferred = pickPreferredSystemSeed();
+    if (preferred && (data?.length ?? 0) === 0) {
+      addPlatformModalCtrl.open({ deepLinkData: systemSeedToDeepLinkPrefill(preferred) });
+    }
+  }, [addPlatformModalCtrl, data?.length]);
+
+  // Idempotent seed of injected system providers (PAIR / ideus.ai / Admin JSON).
+  useEffect(() => {
+    const seeds = resolveSystemProviderSeeds();
+    if (seeds.length === 0 || !data) return;
+    const existingIds = new Set(data.map((p) => p.id));
+    const missing = seeds.filter((seed) => !existingIds.has(seed.id));
+    if (missing.length === 0) return;
+
+    let cancelled = false;
+    void (async () => {
+      for (const seed of missing) {
+        if (cancelled) return;
+        try {
+          await ipcBridge.mode.createProvider.invoke(systemSeedToProvider(seed));
+        } catch (error) {
+          console.warn('[system-model] failed to seed provider', seed.id, error);
+        }
+      }
+      if (!cancelled) void mutate();
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [data, mutate]);
 
   const [addModelModalCtrl, addModelModalContext] = AddModelModal.useModal({
     onSubmit(platform) {

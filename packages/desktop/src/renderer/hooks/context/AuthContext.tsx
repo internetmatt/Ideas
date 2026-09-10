@@ -1,6 +1,7 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { PREVIEW_SCOPE_KEY_PREFIX } from '@/renderer/pages/conversation/Preview/context/previewScope';
 import { refreshSession } from '@/common/adapter/sessionRefresh';
+import { isProjectoCoworkHost, webUiPath } from '@/common/adapter/webUiPublicBase';
 // M6: CSRF removed with legacy webserver — stub functions for compatibility, re-implement in M7
 const withCsrfToken = <T extends Record<string, unknown>>(data: T): T => data;
 const hasValidCsrfToken = (): boolean => true;
@@ -49,7 +50,14 @@ const AuthContext = createContext<AuthContextValue | undefined>(undefined);
 
 const AUTH_USER_ENDPOINT = '/api/auth/user';
 
-const isDesktopRuntime = typeof window !== 'undefined' && Boolean(window.electronAPI);
+function isDesktopRuntime(): boolean {
+  return typeof window !== 'undefined' && Boolean(window.electronAPI);
+}
+
+/** Local Electron + aioncore skips /login; the :4715 Ideas plane must not. */
+function shouldSkipWebLogin(): boolean {
+  return isDesktopRuntime() && !isProjectoCoworkHost();
+}
 
 // Clear expired auth cache including cookies and localStorage
 // 清除过期的认证缓存，包括 Cookie 和 localStorage
@@ -86,7 +94,7 @@ function clearAuthCache(): void {
 
 async function fetchCurrentUser(signal?: AbortSignal): Promise<AuthUser | null> {
   try {
-    let response = await fetch(AUTH_USER_ENDPOINT, {
+    let response = await fetch(webUiPath(AUTH_USER_ENDPOINT), {
       method: 'GET',
       credentials: 'include',
       signal,
@@ -99,7 +107,7 @@ async function fetchCurrentUser(signal?: AbortSignal): Promise<AuthUser | null> 
     if (response.status === 401) {
       const refreshed = await refreshSession();
       if (refreshed) {
-        response = await fetch(AUTH_USER_ENDPOINT, {
+        response = await fetch(webUiPath(AUTH_USER_ENDPOINT), {
           method: 'GET',
           credentials: 'include',
           signal,
@@ -128,21 +136,10 @@ async function fetchCurrentUser(signal?: AbortSignal): Promise<AuthUser | null> 
   return null;
 }
 
-/** Projecto shell inject — preferred identity when embedded under :4715. */
-function userFromProjectoIntegrations(): AuthUser | null {
-  if (typeof window === 'undefined') return null;
-  const identity = window.__PROJECTO_INTEGRATIONS__?.identity;
-  if (!identity?.sub && !identity?.email) return null;
-  return {
-    id: String(identity.sub || identity.email),
-    username: String(identity.email || identity.sub),
-  };
-}
-
 /**
  * Host-owned cowork injects `whitelabel: "projecto"` (or ideas + an identity).
- * Raw :3011 only injects `{ productName, whitelabel: "ideas" }` for chrome —
- * that is branding, not a Projecto IdP. Those users must keep local /login.
+ * That payload is chrome + LLM catalog — not the Ideas user store.
+ * :3011 and :4715 Ideas plane both authenticate against aioncore /login.
  */
 export function isProjectoHostedShell(
   integ: (Window & { __PROJECTO_INTEGRATIONS__?: { whitelabel?: string; identity?: { sub?: string; email?: string } } })['__PROJECTO_INTEGRATIONS__'] = typeof window === 'undefined'
@@ -162,16 +159,7 @@ export const AuthProvider: React.FC<React.PropsWithChildren> = ({ children }) =>
   const abortRef = useRef<AbortController | null>(null);
 
   const refresh = useCallback(async () => {
-    // Host-owned panel (Projecto / Ideas): trust injected JWT before local login.
-    const projectoUser = userFromProjectoIntegrations();
-    if (projectoUser && isProjectoHostedShell()) {
-      setUser(projectoUser);
-      setStatus('authenticated');
-      setReady(true);
-      return;
-    }
-
-    if (isDesktopRuntime) {
+    if (shouldSkipWebLogin()) {
       setStatus('authenticated');
       setUser(null);
       setReady(true);
@@ -219,7 +207,7 @@ export const AuthProvider: React.FC<React.PropsWithChildren> = ({ children }) =>
         return { success: false, message: 'Redirecting to host login…', code: 'unknown' };
       }
 
-      if (isDesktopRuntime) {
+      if (shouldSkipWebLogin()) {
         setReady(true);
         return { success: true };
       }
@@ -235,7 +223,7 @@ export const AuthProvider: React.FC<React.PropsWithChildren> = ({ children }) =>
 
       // P1 安全修复：登录请求需要 CSRF Token / P1 Security fix: Login needs CSRF token
       // Backend route is /login; web-host's static-server explicitly proxies it.
-      const response = await fetch('/login', {
+      const response = await fetch(webUiPath('/login'), {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -321,7 +309,7 @@ export const AuthProvider: React.FC<React.PropsWithChildren> = ({ children }) =>
   }, []);
 
   const logout = useCallback(async () => {
-    if (isDesktopRuntime) {
+    if (shouldSkipWebLogin()) {
       setUser(null);
       setStatus('authenticated');
       setReady(true);
@@ -329,7 +317,7 @@ export const AuthProvider: React.FC<React.PropsWithChildren> = ({ children }) =>
     }
 
     try {
-      await fetch('/logout', {
+      await fetch(webUiPath('/logout'), {
         method: 'POST',
         // Logout also needs CSRF token / 登出同样需要 CSRF Token
         headers: {

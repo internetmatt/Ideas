@@ -9,6 +9,7 @@
  */
 
 import http, { type IncomingMessage, type ServerResponse } from 'node:http';
+import { mergeCookieHeaders, resolveFlowiseServiceCookie } from './flowiseSession.js';
 
 export const CANVAS_ISLAND_MOUNT = '/canvas-island';
 
@@ -175,8 +176,10 @@ export function rewriteFlowiseIslandPayload(content: string, contentType: string
       '.VITE_UI_BASE_URL||window.location.origin',
       `.VITE_UI_BASE_URL||(window.location.origin+"${mount}")`
     );
-    // Vite may emit bare `jsx` / `jsxs` / `/*#__PURE__*/jsx` / `createElement`, not only `R.jsx`.
+    // Flowise boots as <Provider store={...}><BrowserRouter>...</BrowserRouter></Provider>.
+    // Vite may emit `jsx` / `jsxs` / `R.jsx` / `/*#__PURE__*/jsx` / `createElement`.
     // Without basename, RR sees `/canvas-island/v2/agentcanvas/:id` and matches nothing → blank iframe.
+    // Do NOT rewrite Flowise `config.basename` (passed to useRoutes as location) — that blanks the canvas.
     out = out.replace(
       /,\s*\{store:([A-Za-z_$][\w$]*),children:(?:\/\*#__PURE__\*\/)?((?:[A-Za-z_$][\w$]*\.)?(?:jsxs?|createElement))\(([A-Za-z_$][\w$]*),\{children:/g,
       `,{store:$1,children:$2($3,{basename:"${mount}",children:`
@@ -193,7 +196,14 @@ export function rewriteFlowiseIslandPayload(content: string, contentType: string
     // slash so `"/"+dep` becomes `/canvas-island/assets/...`.
     out = out.replaceAll('"assets/', `"${mount.slice(1)}/assets/`);
     out = out.replaceAll("'assets/", `'${mount.slice(1)}/assets/`);
-    for (const route of ['/v2/agentcanvas', '/agentcanvas', '/canvas', '/v2/marketplace', '/chatflows', '/marketplace']) {
+    for (const route of [
+      '/v2/agentcanvas',
+      '/agentcanvas',
+      '/canvas',
+      '/v2/marketplace',
+      '/chatflows',
+      '/marketplace',
+    ]) {
       out = out.replaceAll(`\`${route}/\${`, `\`${mount}${route}/\${`);
     }
     out = out.replaceAll('window.location.href="/login"', `window.location.href="${mount}/login"`);
@@ -236,18 +246,42 @@ export function rewriteIslandLocation(location: string, origin?: FlowiseOrigin):
 }
 
 /**
+ * Strip headers that block same-origin Ideas from embedding the island iframe.
+ * OpenIdeas ships `frame-ancestors 'self'` / `X-Frame-Options: SAMEORIGIN`; those
+ * are correct for :3010 directly, but break `/canvas-island` when the browser
+ * origin string differs (localhost vs 127.0.0.1) or a parent tunnel host is used.
+ */
+export function sanitizeIslandResponseHeaders(headers: http.OutgoingHttpHeaders): http.OutgoingHttpHeaders {
+  const headersOut = { ...headers };
+  delete headersOut['content-length'];
+  delete headersOut['content-encoding'];
+  delete headersOut['x-frame-options'];
+  delete headersOut['content-security-policy'];
+  delete headersOut['Content-Security-Policy'];
+  delete headersOut['X-Frame-Options'];
+  headersOut['cache-control'] = 'no-store';
+  return headersOut;
+}
+
+/**
  * The island iframe is same-origin Ideas, already authenticated. OpenIdeas
  * still 401s `/api/v1/chatflows` without this header, which leaves the canvas blank.
  */
 export function islandUpstreamHeaders(
   reqHeaders: IncomingMessage['headers'],
-  origin: FlowiseOrigin
+  origin: FlowiseOrigin,
+  serviceCookie?: string | null
 ): http.OutgoingHttpHeaders {
+  const cookie = mergeCookieHeaders(
+    typeof reqHeaders.cookie === 'string' ? reqHeaders.cookie : undefined,
+    serviceCookie || undefined
+  );
   return {
     ...reqHeaders,
     host: `${origin.hostname}:${origin.port}`,
     'accept-encoding': 'identity',
     'x-request-from': 'internal',
+    ...(cookie ? { cookie } : {}),
   };
 }
 
@@ -285,53 +319,53 @@ export function forwardToFlowiseIsland(
   origin: FlowiseOrigin,
   upstreamPath = stripCanvasIslandPath(req.url || '/')
 ): void {
-  const headers = islandUpstreamHeaders(req.headers, origin);
-  const options: http.RequestOptions = {
-    hostname: origin.hostname,
-    port: origin.port,
-    path: upstreamPath,
-    method: req.method,
-    headers,
+  const start = (serviceCookie: string | null) => {
+    const headers = islandUpstreamHeaders(req.headers, origin, serviceCookie);
+    const options: http.RequestOptions = {
+      hostname: origin.hostname,
+      port: origin.port,
+      path: upstreamPath,
+      method: req.method,
+      headers,
+    };
+
+    const proxy = http.request(options, (proxyRes) => {
+      const contentType = String(proxyRes.headers['content-type'] || '');
+      const location = proxyRes.headers.location;
+      if (typeof location === 'string') {
+        proxyRes.headers.location = rewriteIslandLocation(location, origin);
+      }
+      const csp = proxyRes.headers['content-security-policy'];
+      if (csp !== undefined) {
+        proxyRes.headers['content-security-policy'] = widenFrameAncestorsForIsland(csp);
+      }
+      if (!shouldRewriteIslandBody(contentType, upstreamPath)) {
+        res.writeHead(proxyRes.statusCode ?? 502, sanitizeIslandResponseHeaders(proxyRes.headers));
+        proxyRes.pipe(res);
+        return;
+      }
+
+      const chunks: Buffer[] = [];
+      proxyRes.on('data', (chunk) => chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk)));
+      proxyRes.on('end', () => {
+        const body = rewriteFlowiseIslandPayload(Buffer.concat(chunks).toString('utf8'), contentType, upstreamPath);
+        res.writeHead(proxyRes.statusCode ?? 502, sanitizeIslandResponseHeaders(proxyRes.headers));
+        res.end(body);
+      });
+    });
+
+    proxy.on('error', () => {
+      if (!res.headersSent) {
+        res.writeHead(502, { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-store' });
+        res.end(
+          `<!doctype html><html><head><meta charset="utf-8"/><title>Canvas unavailable</title></head><body><p>OpenIdeas sidecar is not reachable on ${origin.hostname}:${origin.port}.</p></body></html>`
+        );
+      } else {
+        res.destroy();
+      }
+    });
+    req.pipe(proxy);
   };
 
-  const proxy = http.request(options, (proxyRes) => {
-    const contentType = String(proxyRes.headers['content-type'] || '');
-    const location = proxyRes.headers.location;
-    if (typeof location === 'string') {
-      proxyRes.headers.location = rewriteIslandLocation(location, origin);
-    }
-    const csp = proxyRes.headers['content-security-policy'];
-    if (csp !== undefined) {
-      proxyRes.headers['content-security-policy'] = widenFrameAncestorsForIsland(csp);
-    }
-    if (!shouldRewriteIslandBody(contentType, upstreamPath)) {
-      res.writeHead(proxyRes.statusCode ?? 502, proxyRes.headers);
-      proxyRes.pipe(res);
-      return;
-    }
-
-    const chunks: Buffer[] = [];
-    proxyRes.on('data', (chunk) => chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk)));
-    proxyRes.on('end', () => {
-      const body = rewriteFlowiseIslandPayload(Buffer.concat(chunks).toString('utf8'), contentType, upstreamPath);
-      const headersOut = { ...proxyRes.headers };
-      delete headersOut['content-length'];
-      delete headersOut['content-encoding'];
-      headersOut['cache-control'] = 'no-store';
-      res.writeHead(proxyRes.statusCode ?? 502, headersOut);
-      res.end(body);
-    });
-  });
-
-  proxy.on('error', () => {
-    if (!res.headersSent) {
-      res.writeHead(502, { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-store' });
-      res.end(
-        `<!doctype html><html><head><meta charset="utf-8"/><title>Canvas unavailable</title></head><body><p>OpenIdeas sidecar is not reachable on ${origin.hostname}:${origin.port}.</p></body></html>`
-      );
-    } else {
-      res.destroy();
-    }
-  });
-  req.pipe(proxy);
+  void resolveFlowiseServiceCookie(origin).then(start, () => start(null));
 }

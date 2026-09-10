@@ -801,6 +801,9 @@
     "untitledAgentflow": "未命名代理流",
     "openIdeasOffline": "OpenIdeas 当前离线。",
     "emptySessionHint": "选择已有对话流/代理流，或为本会话新建一个。",
-    "emptyCanvasHint": "从列表选择对话流或代理流，或新建一个。"
+    "emptyCanvasHint": "从列表选择对话流或代理流，或新建一个。",
+    "predictFailed": "OpenIdeas 无法回答此消息。",
+    "listFailed": "无法加载 OpenIdeas 流程。",
+    "createFailed": "无法创建该 OpenIdeas 流程。"
   }
 }

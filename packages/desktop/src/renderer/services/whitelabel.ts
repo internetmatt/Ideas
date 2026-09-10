@@ -62,6 +62,25 @@ declare global {
         roles?: string[];
       };
       projectContext?: Record<string, unknown> | null;
+      /**
+       * Ideas Admin / Projecto operator-injected LLM seeds.
+       * Prefills or auto-creates providers for PAIR (local) or ideus.ai (hosted).
+       */
+      systemProviders?: Array<{
+        id: string;
+        name: string;
+        source: 'pair' | 'ideas' | 'custom';
+        base_url: string;
+        api_key?: string;
+        models?: string[];
+        locked?: boolean;
+        platform?: string;
+      }>;
+      defaultSystemModelSource?: 'pair' | 'ideas' | 'custom';
+      pairBaseUrl?: string;
+      pairApiKey?: string;
+      ideasBaseUrl?: string;
+      ideasApiKey?: string;
     };
   }
 }

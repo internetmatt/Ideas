@@ -54,6 +54,8 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { classifyConversationBusyError } from '../conversationBusyError';
 import { useAionrsMessage } from './useAionrsMessage';
+import { useAddOrUpdateMessage } from '@/renderer/pages/conversation/Messages/hooks';
+import { trySendViaSessionWorkflow } from '@/renderer/pages/conversation/Workflow/sessionWorkflowSend';
 import type { AionrsModelSelection } from './useAionrsModelSelection';
 
 const configErrorMessageKey = (error: unknown) => {
@@ -157,6 +159,7 @@ const AionrsSendBox: React.FC<{
   );
   const runtimeView = useConversationRuntimeView(conversation_id);
   const { markSendStarted, markSendAccepted, markSendFailed } = runtimeView;
+  const addOrUpdateMessage = useAddOrUpdateMessage();
 
   const { atPath, uploadFile, setAtPath, setUploadFile, content, setContent } = useSendBoxDraft(conversation_id);
 
@@ -254,11 +257,6 @@ const AionrsSendBox: React.FC<{
   const executeCommand = useCallback(
     async ({ input, files, sessions }: Pick<ConversationCommandQueueItem, 'input' | 'files' | 'sessions'>) => {
       if (teamPermission) await teamPermission.warmupSession();
-      if (!current_model?.use_model) {
-        Message.warning(t('conversation.chat.noModelSelected'));
-        throw new Error('No model selected');
-      }
-
       // The message body is plain user text; the backend resolves each
       // ChatFileRef to an absolute path and injects the [[AION_FILES]] marker at
       // the send edge — the front-end no longer builds paths nor the marker.
@@ -271,6 +269,21 @@ const AionrsSendBox: React.FC<{
             emitter.emit('aionrs.workspace.refresh');
           }
           return;
+        }
+
+        const handledByWorkflow = await trySendViaSessionWorkflow({
+          conversationId: conversation_id,
+          input,
+          addOrUpdateMessage,
+          errorMessage: t('conversation.workflow.predictFailed'),
+        });
+        if (handledByWorkflow) {
+          return;
+        }
+
+        if (!current_model?.use_model) {
+          Message.warning(t('conversation.chat.noModelSelected'));
+          throw new Error('No model selected');
         }
 
         markSendStarted();
@@ -311,6 +324,7 @@ const AionrsSendBox: React.FC<{
       }
     },
     [
+      addOrUpdateMessage,
       checkAndUpdateTitle,
       conversation_id,
       current_model?.use_model,

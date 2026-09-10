@@ -52,6 +52,7 @@ describe('LoginPage', () => {
     login.mockReset();
     navigate.mockReset();
     document.body.className = '';
+    window.localStorage.clear();
   });
 
   it('renders the ideus-shaped Ideas sign-in surface', () => {
@@ -96,11 +97,18 @@ describe('LoginPage', () => {
     fireEvent.submit(screen.getByTestId('auth-form'));
 
     await waitFor(() => {
-      expect(login).toHaveBeenCalledWith({ username: 'admin', password: 'secret' });
+      expect(login).toHaveBeenCalledWith({ username: 'admin', password: 'secret', remember: true });
     });
 
     fireEvent.click(screen.getByRole('button', { name: 'login.forgotPassword' }));
     expect(screen.getByText('login.forgotPasswordHelp')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'login.backToSignIn' })).toBeInTheDocument();
+  });
+
+  it('restores the last :3011 login email', () => {
+    window.localStorage.setItem('ideas.webui.lastLoginEmail', 'matt@ideas.local');
+    render(<LoginPage />);
+    expect((screen.getByTestId('login-email') as HTMLInputElement).value).toBe('matt@ideas.local');
+    expect((screen.getByTestId('login-remember') as HTMLInputElement).checked).toBe(true);
   });
 });

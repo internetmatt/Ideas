@@ -14,3 +14,7 @@ export {
   mergeChatflowsIntoHistory,
   VIRTUAL_CHATFLOW_PREFIX,
 } from './chatflowConversations';
+export {
+  trySendViaSessionWorkflow,
+  isSessionWorkflowReady,
+} from './sessionWorkflowSend';

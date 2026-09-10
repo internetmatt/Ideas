@@ -1,19 +1,31 @@
+/**
+ * Ideas / ideus sign-in surface.
+ * Maps onto product theme tokens (primary, brand, aou, success) so the gate
+ * matches the brightness of the in-app chrome instead of a flat muted panel.
+ */
+
 .login-page {
-  --login-bg: #0b0d14;
-  --login-glow-purple: rgba(88, 48, 140, 0.45);
-  --login-glow-teal: rgba(32, 120, 110, 0.38);
-  --login-card: rgba(18, 20, 28, 0.78);
-  --login-card-border: rgba(110, 130, 180, 0.28);
-  --login-text: var(--colors-neutral-white, #ffffff);
-  --login-muted: rgba(255, 255, 255, 0.72);
-  --login-input-bg: rgba(8, 10, 16, 0.92);
-  --login-input-border: rgba(255, 255, 255, 0.14);
-  --login-primary: var(--colors-primary-default, #0078d4);
-  --login-primary-hover: var(--colors-primary-hover, #106ebe);
-  --login-primary-active: var(--colors-primary-active, #005a9e);
-  --login-link: var(--colors-info-default, #4ea3e0);
-  --login-radius-card: 14px;
-  --login-radius-control: 8px;
+  /* Product tokens → login aliases (dark gate with luminous accents) */
+  --login-bg: color-mix(in srgb, var(--bg-base, #0e0e0e) 92%, var(--primary, #4d9fff) 8%);
+  --login-glow-primary: color-mix(in srgb, var(--primary, #4d9fff) 52%, transparent);
+  --login-glow-brand: color-mix(in srgb, var(--brand, #a1aacb) 42%, transparent);
+  --login-glow-accent: color-mix(in srgb, var(--success, #23c343) 34%, transparent);
+  --login-card: color-mix(in srgb, var(--bg-1, #1a1a1a) 78%, transparent);
+  --login-card-border: color-mix(in srgb, var(--primary, #4d9fff) 38%, var(--border-base, #333333) 62%);
+  --login-card-highlight: color-mix(in srgb, var(--primary, #4d9fff) 55%, white 20%);
+  --login-text: var(--text-white, #ffffff);
+  --login-muted: color-mix(in srgb, var(--text-white, #ffffff) 74%, transparent);
+  --login-input-bg: color-mix(in srgb, var(--bg-base, #0e0e0e) 88%, var(--bg-2, #262626) 12%);
+  --login-input-border: color-mix(in srgb, var(--brand, #a1aacb) 35%, transparent);
+  --login-primary: var(--primary, #4d9fff);
+  --login-primary-hover: color-mix(in srgb, var(--primary, #4d9fff) 82%, white 18%);
+  --login-primary-active: color-mix(in srgb, var(--primary, #4d9fff) 78%, black 22%);
+  --login-link: color-mix(in srgb, var(--primary, #4d9fff) 72%, white 28%);
+  --login-mark-bg: var(--success, #23c343);
+  --login-mark-fg: var(--text-white, #ffffff);
+  --login-focus-ring: color-mix(in srgb, var(--primary, #4d9fff) 35%, transparent);
+  --login-radius-card: 16px;
+  --login-radius-control: 10px;
   --login-field-width: 254px;
 
   position: relative;
@@ -57,8 +69,20 @@ body.login-page-active {
 .login-page__atmosphere {
   z-index: 0;
   background:
-    radial-gradient(42% 48% at 12% 18%, var(--login-glow-purple), transparent 70%),
-    radial-gradient(46% 52% at 88% 78%, var(--login-glow-teal), transparent 72%);
+    radial-gradient(48% 42% at 50% 8%, var(--login-glow-primary), transparent 72%),
+    radial-gradient(38% 44% at 8% 22%, var(--login-glow-brand), transparent 70%),
+    radial-gradient(42% 48% at 92% 78%, var(--login-glow-accent), transparent 74%),
+    radial-gradient(70% 60% at 50% 100%, color-mix(in srgb, var(--primary, #4d9fff) 18%, transparent), transparent 68%);
+}
+
+.login-page__atmosphere::before {
+  background: linear-gradient(
+    160deg,
+    color-mix(in srgb, var(--primary, #4d9fff) 10%, transparent),
+    transparent 42%,
+    color-mix(in srgb, var(--success, #23c343) 8%, transparent)
+  );
+  opacity: 0.9;
 }
 
 .login-page__shell {
@@ -67,7 +91,7 @@ body.login-page-active {
   display: flex;
   flex-direction: column;
   align-items: center;
-  width: min(100%, 352px);
+  width: min(100%, 360px);
 }
 
 .login-page__lang {
@@ -86,7 +110,7 @@ body.login-page-active {
   color: var(--login-text);
   font-size: 13px;
   cursor: pointer;
-  transition-property: border-color, box-shadow;
+  transition-property: border-color, box-shadow, background-color;
   transition-duration: 150ms;
   transition-timing-function: ease-out;
 }
@@ -94,7 +118,7 @@ body.login-page-active {
 .login-page__lang-select:hover,
 .login-page__lang-select:focus-visible {
   border-color: var(--login-primary);
-  box-shadow: 0 0 0 3px var(--colors-interactive-focus, rgba(0, 120, 212, 0.3));
+  box-shadow: 0 0 0 3px var(--login-focus-ring);
   outline: none;
 }
 
@@ -102,21 +126,43 @@ body.login-page-active {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 10px;
-  margin: 8px 0 24px;
+  gap: 12px;
+  margin: 8px 0 28px;
   color: var(--login-text);
 }
 
 .login-page__mark {
-  width: 28px;
-  height: 28px;
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  background: linear-gradient(145deg, color-mix(in srgb, var(--login-mark-bg) 88%, white 12%), var(--login-mark-bg));
+  box-shadow:
+    0 0 0 1px color-mix(in srgb, var(--login-mark-bg) 55%, white 20%),
+    0 10px 28px color-mix(in srgb, var(--login-mark-bg) 45%, transparent);
+  color: var(--login-mark-fg);
+}
+
+.login-page__mark-svg {
+  width: 20px;
+  height: 20px;
 }
 
 .login-page__wordmark {
-  font-size: 22px;
+  font-size: 26px;
   font-weight: 700;
-  letter-spacing: -0.03em;
+  letter-spacing: -0.04em;
   text-wrap: balance;
+  background: linear-gradient(
+    120deg,
+    var(--login-text) 0%,
+    color-mix(in srgb, var(--primary, #4d9fff) 55%, white 45%) 55%,
+    color-mix(in srgb, var(--brand, #a1aacb) 70%, white 30%) 100%
+  );
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
 }
 
 .login-page__card {
@@ -124,17 +170,23 @@ body.login-page-active {
   padding: 36px 48px 32px;
   border: 1px solid var(--login-card-border);
   border-radius: var(--login-radius-card);
-  background: var(--login-card);
-  box-shadow: 0 24px 80px rgba(0, 0, 0, 0.35);
-  backdrop-filter: blur(18px);
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--primary, #4d9fff) 14%, transparent), transparent 34%),
+    var(--login-card);
+  box-shadow:
+    0 0 0 1px color-mix(in srgb, var(--login-card-highlight) 28%, transparent),
+    0 28px 80px rgba(0, 0, 0, 0.42),
+    0 0 64px color-mix(in srgb, var(--primary, #4d9fff) 16%, transparent);
+  backdrop-filter: blur(22px) saturate(1.2);
 }
 
 .login-page__heading {
   margin: 0 0 28px;
   text-align: center;
-  font-size: 20px;
-  font-weight: 600;
+  font-size: 22px;
+  font-weight: 650;
   line-height: 1.25;
+  letter-spacing: -0.02em;
   text-wrap: balance;
 }
 
@@ -156,7 +208,7 @@ body.login-page-active {
 .login-page__label {
   color: var(--login-text);
   font-size: 14px;
-  font-weight: 500;
+  font-weight: 550;
 }
 
 .login-page__control {
@@ -172,23 +224,23 @@ body.login-page-active {
   background: var(--login-input-bg);
   color: var(--login-text);
   font-size: 15px;
-  transition-property: border-color, box-shadow;
+  transition-property: border-color, box-shadow, background-color;
   transition-duration: 150ms;
   transition-timing-function: ease-out;
 }
 
 .login-page__input:hover {
-  border-color: rgba(255, 255, 255, 0.28);
+  border-color: color-mix(in srgb, var(--primary, #4d9fff) 45%, white 20%);
 }
 
 .login-page__input:focus-visible {
   border-color: var(--login-primary);
-  box-shadow: 0 0 0 3px var(--colors-interactive-focus, rgba(0, 120, 212, 0.3));
+  box-shadow: 0 0 0 3px var(--login-focus-ring);
   outline: none;
 }
 
 .login-page__input[aria-invalid='true'] {
-  border-color: var(--colors-border-error, #e81123);
+  border-color: var(--danger, #f76560);
 }
 
 .login-page__toggle-password {
@@ -202,7 +254,7 @@ body.login-page-active {
   height: 36px;
   padding: 0;
   border: 0;
-  border-radius: 6px;
+  border-radius: 8px;
   background: transparent;
   color: var(--login-muted);
   transform: translateY(-50%);
@@ -212,37 +264,68 @@ body.login-page-active {
 .login-page__toggle-password:hover,
 .login-page__toggle-password:focus-visible {
   color: var(--login-text);
+  background: color-mix(in srgb, var(--primary, #4d9fff) 16%, transparent);
   outline: none;
+}
+
+.login-page__remember {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: var(--login-field-width);
+  margin-top: 4px;
+  color: var(--login-muted);
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.login-page__remember input {
+  width: 16px;
+  height: 16px;
+  accent-color: var(--login-primary);
 }
 
 .login-page__submit {
   width: var(--login-field-width);
-  min-height: 44px;
+  min-height: 46px;
   margin-top: 8px;
   border: 0;
   border-radius: var(--login-radius-control);
-  background: var(--login-primary);
+  background: linear-gradient(180deg, color-mix(in srgb, var(--login-primary) 78%, white 22%), var(--login-primary));
   color: var(--login-text);
   font-size: 15px;
-  font-weight: 600;
+  font-weight: 650;
+  letter-spacing: -0.01em;
   cursor: pointer;
-  transition-property: background-color, transform;
+  box-shadow:
+    0 1px 0 color-mix(in srgb, white 28%, transparent) inset,
+    0 12px 28px color-mix(in srgb, var(--login-primary) 38%, transparent);
+  transition-property: background-color, transform, box-shadow, filter;
   transition-duration: 150ms;
   transition-timing-function: ease-out;
 }
 
 .login-page__submit:hover:not(:disabled) {
-  background: var(--login-primary-hover);
+  background: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--login-primary-hover) 70%, white 30%),
+    var(--login-primary-hover)
+  );
+  box-shadow:
+    0 1px 0 color-mix(in srgb, white 32%, transparent) inset,
+    0 14px 32px color-mix(in srgb, var(--login-primary) 48%, transparent);
+  filter: saturate(1.08);
 }
 
 .login-page__submit:active:not(:disabled) {
   background: var(--login-primary-active);
-  transform: scale(0.96);
+  transform: scale(0.97);
 }
 
 .login-page__submit:disabled {
   opacity: 0.6;
   cursor: not-allowed;
+  box-shadow: none;
 }
 
 .login-page__submit-row {
@@ -265,11 +348,11 @@ body.login-page-active {
 }
 
 .login-page__message--error {
-  color: var(--colors-danger-light, #f7630c);
+  color: var(--danger, #f76560);
 }
 
 .login-page__message--success {
-  color: var(--colors-success-light, #7fba00);
+  color: var(--success, #23c343);
 }
 
 .login-page__forgot {

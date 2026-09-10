@@ -804,8 +804,11 @@
     "untitledAgentflow": "Untitled Agent",
     "openIdeasOffline": "OpenIdeas is offline on this host.",
     "agentflowCanvas": "Agentflow canvas",
-    "emptySessionHint": "This chat will get a canvas when OpenIdeas is online.",
-    "emptyCanvasHint": "Create a chatflow to edit, or open a chat from the list.",
-    "emptyAgentflowHint": "Create an agentflow to edit, or open one from Assistants."
+    "emptySessionHint": "Pick an existing chatflow or agentflow, or create a new one for this session.",
+    "emptyCanvasHint": "Pick a chatflow or agentflow from the list, or create a new one.",
+    "emptyAgentflowHint": "Create an agentflow to edit, or open one from Assistants.",
+    "predictFailed": "OpenIdeas could not answer this message.",
+    "listFailed": "Could not load OpenIdeas flows.",
+    "createFailed": "Could not create that OpenIdeas flow."
   }
 }

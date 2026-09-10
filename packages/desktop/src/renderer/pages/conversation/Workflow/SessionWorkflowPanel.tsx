@@ -3,21 +3,27 @@
  * Copyright 2025 AionUi (aionui.com)
  * SPDX-License-Identifier: Apache-2.0
  *
- * Session-scoped OpenIdeas node editor bound to this conversation's chatflow.
- * Chatflows live in Ideas history — this panel does not list the catalog.
+ * Session-scoped OpenIdeas canvas panel — pick or create chatflows / agentflows
+ * and bind them to the active conversation. Host-tab chrome can hide the
+ * duplicate header because Files/Changes/Canvas tabs own that.
  */
 
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { Button, Tag } from '@arco-design/web-react';
-import { Close, ShareOne } from '@icon-park/react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { Button, Message, Select, Tag } from '@arco-design/web-react';
+import { Close, Export, Refresh, ShareOne } from '@icon-park/react';
 import { useTranslation } from 'react-i18next';
 import {
   buildFlowiseEmbedUrl,
+  createBlankAgentflow,
   createBlankChatflow,
   isUsableFlowId,
+  listChatflows,
   pingFlowise,
   resolveFlowiseUrl,
+  type FlowiseChatflow,
+  type FlowiseFlowType,
 } from '@renderer/services/flowise';
+import { flowOptionLabel, flowsForPicker } from '@renderer/pages/flowise/flowisePageModel';
 import { attachmentFromChatflow, type SessionWorkflowAttachment } from './sessionWorkflow';
 
 type Props = {
@@ -25,7 +31,7 @@ type Props = {
   conversationName?: string;
   attachment: SessionWorkflowAttachment | null;
   onClose?: () => void;
-  onAttach?: (next: SessionWorkflowAttachment) => void;
+  onAttach?: (next: SessionWorkflowAttachment | null) => void;
   /** Host tab: no duplicate "Session canvas" chrome — the Files/Changes/Canvas tabs own that. */
   variant?: 'split' | 'host';
 };
@@ -40,9 +46,20 @@ const SessionWorkflowPanel: React.FC<Props> = ({
 }) => {
   const { t } = useTranslation();
   const [status, setStatus] = useState<'checking' | 'online' | 'offline'>('checking');
-  const [busy, setBusy] = useState(false);
+  const [flows, setFlows] = useState<FlowiseChatflow[]>([]);
+  const [busy, setBusy] = useState<'chatflow' | 'agentflow' | null>(null);
+  const [frameEpoch, setFrameEpoch] = useState(0);
+  const skipAutoSelectRef = useRef(false);
   const baseUrl = useMemo(() => resolveFlowiseUrl(attachment?.base_url), [attachment?.base_url]);
+  const pickerFlows = useMemo(() => flowsForPicker(flows), [flows]);
   const flowId = isUsableFlowId(attachment?.flow_id) ? attachment.flow_id : undefined;
+
+  const resolvedFlowType = useMemo<FlowiseFlowType | undefined>(() => {
+    if (attachment?.flow_type) return attachment.flow_type;
+    if (!attachment?.flow_id) return undefined;
+    return flows.find((flow) => flow.id === attachment.flow_id)?.type;
+  }, [attachment?.flow_id, attachment?.flow_type, flows]);
+
   const embedUrl = useMemo(
     () =>
       flowId
@@ -50,41 +67,101 @@ const SessionWorkflowPanel: React.FC<Props> = ({
             baseUrl,
             flowId,
             conversationId,
-            flowType: attachment?.flow_type,
+            flowType: resolvedFlowType,
           })
         : '',
-    [baseUrl, flowId, attachment?.flow_type, conversationId]
+    [baseUrl, flowId, resolvedFlowType, conversationId]
   );
 
-  const refreshStatus = useCallback(async () => {
+  const refreshFlows = useCallback(async () => {
     const online = await pingFlowise(baseUrl);
     setStatus(online ? 'online' : 'offline');
-  }, [baseUrl]);
+    if (!online) {
+      setFlows([]);
+      return;
+    }
+    try {
+      setFlows(await listChatflows(baseUrl));
+    } catch {
+      setFlows([]);
+      Message.error(t('conversation.workflow.listFailed'));
+    }
+  }, [baseUrl, t]);
 
   useEffect(() => {
-    void refreshStatus();
-  }, [refreshStatus]);
+    void refreshFlows();
+  }, [refreshFlows]);
 
   useEffect(() => {
     if (status !== 'offline') return;
     const timer = window.setInterval(() => {
-      void refreshStatus();
+      void refreshFlows();
     }, 5000);
     return () => window.clearInterval(timer);
-  }, [status, refreshStatus]);
+  }, [status, refreshFlows]);
 
-  const onCreate = useCallback(async () => {
-    if (!onAttach) return;
-    setBusy(true);
-    try {
-      const created = await createBlankChatflow(baseUrl, conversationName?.trim() || t('conversation.workflow.untitledChatflow'));
-      onAttach(attachmentFromChatflow(created, baseUrl));
-    } catch {
-      /* ping can succeed while create is denied */
-    } finally {
-      setBusy(false);
+  const attach = useCallback(
+    (flow: FlowiseChatflow) => {
+      skipAutoSelectRef.current = false;
+      onAttach?.(attachmentFromChatflow(flow, baseUrl));
+    },
+    [baseUrl, onAttach]
+  );
+
+  // Backfill flow_type when an older attachment only stored flow_id.
+  useEffect(() => {
+    if (!onAttach || !attachment?.flow_id || attachment.flow_type) return;
+    const matched = flows.find((flow) => flow.id === attachment.flow_id);
+    if (matched?.type) {
+      onAttach(attachmentFromChatflow(matched, baseUrl));
     }
-  }, [baseUrl, conversationName, onAttach, t]);
+  }, [attachment?.flow_id, attachment?.flow_type, baseUrl, flows, onAttach]);
+
+  // Auto-populate the session canvas with the first pickable flow when none is attached.
+  useEffect(() => {
+    if (!onAttach || status !== 'online' || attachment?.flow_id || skipAutoSelectRef.current) return;
+    const first = pickerFlows[0];
+    if (first) attach(first);
+  }, [attach, attachment?.flow_id, onAttach, pickerFlows, status]);
+
+  const onCreate = useCallback(
+    async (kind: 'chatflow' | 'agentflow') => {
+      if (!onAttach) return;
+      setBusy(kind);
+      try {
+        const created =
+          kind === 'chatflow'
+            ? await createBlankChatflow(baseUrl, conversationName?.trim() || t('conversation.workflow.untitledChatflow'))
+            : await createBlankAgentflow(baseUrl, conversationName?.trim() || t('conversation.workflow.untitledAgentflow'));
+        setFlows((current) => [created, ...current.filter((flow) => flow.id !== created.id)]);
+        attach(created);
+      } catch {
+        Message.error(t('conversation.workflow.createFailed'));
+      } finally {
+        setBusy(null);
+      }
+    },
+    [attach, baseUrl, conversationName, onAttach, t]
+  );
+
+  const onClearFlow = useCallback(() => {
+    if (!onAttach) return;
+    skipAutoSelectRef.current = true;
+    onAttach({
+      provider: 'flowise',
+      base_url: attachment?.base_url,
+      open_by_default: attachment?.open_by_default ?? true,
+    });
+  }, [attachment?.base_url, attachment?.open_by_default, onAttach]);
+
+  const onReloadFrame = useCallback(() => {
+    setFrameEpoch((epoch) => epoch + 1);
+  }, []);
+
+  const onOpenDirect = useCallback(() => {
+    if (!embedUrl) return;
+    window.open(embedUrl, '_blank', 'noopener,noreferrer');
+  }, [embedUrl]);
 
   return (
     <section className='size-full min-h-0 flex flex-col bg-1' data-testid='session-workflow-panel'>
@@ -100,15 +177,89 @@ const SessionWorkflowPanel: React.FC<Props> = ({
                   ? t('conversation.workflow.statusOffline')
                   : t('conversation.workflow.statusChecking')}
             </Tag>
+            {onAttach ? (
+              <Select
+                size='mini'
+                className='w-220px'
+                placeholder={t('conversation.workflow.selectFlow')}
+                value={attachment?.flow_id}
+                showSearch
+                allowClear
+                onChange={(value) => {
+                  if (value == null || value === '') {
+                    onClearFlow();
+                    return;
+                  }
+                  const flow = flows.find((item) => item.id === String(value));
+                  if (flow) attach(flow);
+                }}
+                data-testid='session-workflow-flow-select'
+              >
+                {pickerFlows.map((flow) => (
+                  <Select.Option key={flow.id} value={flow.id}>
+                    {flowOptionLabel(flow)}
+                  </Select.Option>
+                ))}
+              </Select>
+            ) : null}
           </div>
-          {onClose ? (
-            <Button size='mini' type='text' icon={<Close />} onClick={onClose} aria-label={t('common.close')} />
-          ) : null}
+          <div className='flex items-center gap-4px shrink-0'>
+            {attachment?.flow_id ? (
+              <>
+                <Button
+                  size='mini'
+                  type='text'
+                  icon={<Refresh />}
+                  onClick={onReloadFrame}
+                  aria-label={t('conversation.workflow.reload')}
+                  data-testid='session-workflow-reload'
+                >
+                  {t('conversation.workflow.reload')}
+                </Button>
+                <Button
+                  size='mini'
+                  type='text'
+                  icon={<Export />}
+                  onClick={onOpenDirect}
+                  aria-label={t('conversation.workflow.openDirect')}
+                  data-testid='session-workflow-open-direct'
+                >
+                  {t('conversation.workflow.openDirect')}
+                </Button>
+              </>
+            ) : null}
+            {onAttach && status === 'online' ? (
+              <>
+                <Button
+                  size='mini'
+                  loading={busy === 'chatflow'}
+                  disabled={busy !== null}
+                  onClick={() => void onCreate('chatflow')}
+                  data-testid='session-workflow-new-chatflow'
+                >
+                  {t('conversation.workflow.newChatflow')}
+                </Button>
+                <Button
+                  size='mini'
+                  type='primary'
+                  loading={busy === 'agentflow'}
+                  disabled={busy !== null}
+                  onClick={() => void onCreate('agentflow')}
+                  data-testid='session-workflow-new-agentflow'
+                >
+                  {t('conversation.workflow.newAgentflow')}
+                </Button>
+              </>
+            ) : null}
+            {onClose ? (
+              <Button size='mini' type='text' icon={<Close />} onClick={onClose} aria-label={t('common.close')} />
+            ) : null}
+          </div>
         </header>
       ) : null}
       {flowId && embedUrl && status === 'online' ? (
         <iframe
-          key={flowId}
+          key={`${flowId}:${resolvedFlowType ?? 'unknown'}:${frameEpoch}`}
           className='flex-1 min-h-0 w-full border-0 bg-1'
           title={t('conversation.workflow.sessionCanvas')}
           src={embedUrl}
@@ -125,9 +276,17 @@ const SessionWorkflowPanel: React.FC<Props> = ({
               ? t('conversation.workflow.openIdeasOffline')
               : t('conversation.workflow.emptySessionHint')}
             {status === 'online' && onAttach && !flowId ? (
-              <div className='mt-16px flex items-center justify-center'>
-                <Button size='small' type='primary' loading={busy} onClick={() => void onCreate()}>
+              <div className='mt-16px flex items-center justify-center gap-8px'>
+                <Button size='small' loading={busy === 'chatflow'} onClick={() => void onCreate('chatflow')}>
                   {t('conversation.workflow.newChatflow')}
+                </Button>
+                <Button
+                  size='small'
+                  type='primary'
+                  loading={busy === 'agentflow'}
+                  onClick={() => void onCreate('agentflow')}
+                >
+                  {t('conversation.workflow.newAgentflow')}
                 </Button>
               </div>
             ) : null}

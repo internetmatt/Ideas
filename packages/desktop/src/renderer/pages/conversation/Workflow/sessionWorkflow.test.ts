@@ -9,6 +9,7 @@ import { readSessionWorkflow, sessionWorkflowPatch } from '@/renderer/pages/conv
 import {
   buildFlowiseChatbotUrl,
   buildFlowiseEmbedUrl,
+  canvasPathForFlowType,
   DEFAULT_FLOWISE_URL,
   resolveFlowiseUrl,
 } from '@/renderer/services/flowise/resolveFlowiseUrl';
@@ -27,6 +28,7 @@ describe('readSessionWorkflow', () => {
           provider: 'flowise',
           base_url: 'http://localhost:3010',
           flow_id: 'abc',
+          flow_type: 'CHATFLOW',
           open_by_default: true,
         },
       })
@@ -34,6 +36,7 @@ describe('readSessionWorkflow', () => {
       provider: 'flowise',
       base_url: 'http://localhost:3010',
       flow_id: 'abc',
+      flow_type: 'CHATFLOW',
       open_by_default: true,
     });
   });
@@ -62,14 +65,40 @@ describe('resolveFlowiseUrl / buildFlowiseEmbedUrl', () => {
     expect(resolveFlowiseUrl('http://flowise.example:3010/')).toBe('http://flowise.example:3010');
   });
 
-  it('scopes embed URLs to a flow and conversation', () => {
+  it('routes chatflows to /canvas and agentflows to /v2/agentcanvas', () => {
+    expect(canvasPathForFlowType('CHATFLOW')).toBe('/canvas');
+    expect(canvasPathForFlowType('ASSISTANT')).toBe('/canvas');
+    expect(canvasPathForFlowType('AGENTFLOW')).toBe('/v2/agentcanvas');
+    expect(canvasPathForFlowType(undefined)).toBe('/v2/agentcanvas');
+  });
+
+  it('scopes chatflow embed URLs with an explicit flow type', () => {
+    expect(
+      buildFlowiseEmbedUrl({
+        baseUrl: 'http://flowise.example:3010',
+        flowId: 'flow-1',
+        conversationId: 'conv-9',
+        flowType: 'CHATFLOW',
+      })
+    ).toBe('http://flowise.example:3010/canvas/flow-1?conversationId=conv-9');
+  });
+
+  it('scopes agentflow embed URLs when flow type is missing or AGENTFLOW', () => {
     expect(
       buildFlowiseEmbedUrl({
         baseUrl: 'http://flowise.example:3010',
         flowId: 'flow-1',
         conversationId: 'conv-9',
       })
-    ).toBe('http://flowise.example:3010/canvas/flow-1?conversationId=conv-9');
+    ).toBe('http://flowise.example:3010/v2/agentcanvas/flow-1?conversationId=conv-9');
+
+    expect(
+      buildFlowiseEmbedUrl({
+        baseUrl: 'http://flowise.example:3010',
+        flowId: 'flow-2',
+        flowType: 'AGENTFLOW',
+      })
+    ).toBe('http://flowise.example:3010/v2/agentcanvas/flow-2');
   });
 
   it('scopes chatbot overlay URLs to a flow and conversation', () => {

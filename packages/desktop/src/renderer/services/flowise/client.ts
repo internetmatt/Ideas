@@ -172,11 +172,18 @@ function safeJsonArray(value: string): unknown[] {
   }
 }
 
+/** Same-origin `/canvas-island` can reuse the OpenIdeas iframe session cookies. */
+function flowiseCredentials(baseUrl: string): RequestCredentials {
+  const resolved = resolveFlowiseUrl(baseUrl);
+  return resolved.startsWith('/') ? 'same-origin' : 'omit';
+}
+
 async function flowiseFetch(baseUrl: string, path: string, init?: RequestInit): Promise<unknown> {
-  const url = `${resolveFlowiseUrl(baseUrl)}${path}`;
+  const resolvedBase = resolveFlowiseUrl(baseUrl);
+  const url = `${resolvedBase}${path}`;
   const response = await fetch(url, {
     ...init,
-    credentials: 'omit',
+    credentials: flowiseCredentials(resolvedBase),
     headers: {
       ...INTERNAL_HEADERS,
       ...(init?.body ? { 'Content-Type': 'application/json' } : {}),
@@ -193,12 +200,9 @@ async function flowiseFetch(baseUrl: string, path: string, init?: RequestInit): 
 
 export async function pingFlowise(baseUrl?: string, signal?: AbortSignal): Promise<boolean> {
   try {
-    const url = `${resolveFlowiseUrl(baseUrl)}/api/v1/ping`;
-    const response = await fetch(url, {
-      signal,
-      credentials: 'omit',
-      headers: { ...INTERNAL_HEADERS },
-    });
+    const resolvedBase = resolveFlowiseUrl(baseUrl);
+    const url = `${resolvedBase}/api/v1/ping`;
+    const response = await fetch(url, { signal, credentials: flowiseCredentials(resolvedBase) });
     return response.ok;
   } catch {
     return false;
@@ -539,4 +543,73 @@ export async function cloneMarketplaceTemplate(
   );
   if (!parsed) throw new FlowiseClientError('OpenIdeas clone returned an invalid chatflow', 502);
   return parsed;
+}
+
+export type FlowisePredictRequest = {
+  question: string;
+  chatId?: string;
+};
+
+export type FlowisePredictResult = {
+  text: string;
+  chatId?: string;
+  chatMessageId?: string;
+  raw: unknown;
+};
+
+/** Extract assistant text from an OpenIdeas / Flowise prediction payload. */
+export function parseFlowisePredictResult(raw: unknown): FlowisePredictResult {
+  if (typeof raw === 'string') {
+    return { text: raw, raw };
+  }
+  if (!raw || typeof raw !== 'object') {
+    return { text: '', raw };
+  }
+  const row = raw as Record<string, unknown>;
+  let text = '';
+  if (typeof row.text === 'string') {
+    text = row.text;
+  } else if (typeof row.json === 'string') {
+    text = row.json;
+  } else if (row.json != null) {
+    text = JSON.stringify(row.json);
+  } else if (typeof row.message === 'string') {
+    text = row.message;
+  }
+  return {
+    text,
+    chatId: typeof row.chatId === 'string' ? row.chatId : undefined,
+    chatMessageId: typeof row.chatMessageId === 'string' ? row.chatMessageId : undefined,
+    raw,
+  };
+}
+
+/**
+ * Run a non-streaming OpenIdeas prediction for an attached chatflow/agentflow.
+ * Uses the internal prediction endpoint (same auth posture as the canvas editor).
+ */
+export async function predictChatflow(
+  baseUrl: string | undefined,
+  chatflowId: string,
+  request: FlowisePredictRequest
+): Promise<FlowisePredictResult> {
+  if (!chatflowId) {
+    throw new FlowiseClientError('OpenIdeas chatflow id is required', 400);
+  }
+  if (!request.question.trim()) {
+    throw new FlowiseClientError('OpenIdeas question is required', 400);
+  }
+  const raw = await flowiseFetch(
+    resolveFlowiseUrl(baseUrl),
+    `/api/v1/internal-prediction/${encodeURIComponent(chatflowId)}`,
+    {
+      method: 'POST',
+      body: JSON.stringify({
+        question: request.question,
+        chatId: request.chatId,
+        streaming: false,
+      }),
+    }
+  );
+  return parseFlowisePredictResult(raw);
 }

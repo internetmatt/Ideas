@@ -12,11 +12,13 @@ import { describe, expect, it } from 'vitest';
 import { DEFAULT_PLATFORM_VALUE, MODEL_PLATFORMS } from '@renderer/utils/model/modelPlatforms';
 
 describe('MODEL_PLATFORMS ordering', () => {
-  it('keeps Custom first and pins both Moonshot entries right after it', () => {
+  it('keeps Custom first, then Ideas runtime presets, then both Moonshot entries', () => {
     const values = MODEL_PLATFORMS.map((p) => p.value);
     expect(values[0]).toBe('custom');
-    expect(values[1]).toBe('Moonshot');
-    expect(values[2]).toBe('Moonshot-Global');
+    expect(values[1]).toBe('PAIR');
+    expect(values[2]).toBe('Ideas');
+    expect(values[3]).toBe('Moonshot');
+    expect(values[4]).toBe('Moonshot-Global');
   });
 
   it('defaults the add-model modal platform to the first list entry', () => {

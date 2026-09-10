@@ -57,6 +57,25 @@ export const MODEL_PLATFORMS: PlatformConfig[] = [
   // 自定义选项（需要用户输入 base url）/ Custom option (requires user to input base url)
   { name: 'Custom', value: 'custom', logo: null, platform: 'custom', i18nKey: 'settings.platformCustom' },
 
+  // Ideas runtime presets — Projecto+PAIR (local) and Ideas-hosted OpenRouter wrapper (ideus.ai).
+  // Prefer these for system-model seeding; URLs may be overridden via __PROJECTO_INTEGRATIONS__.
+  {
+    name: 'PAIR (Projecto local)',
+    value: 'PAIR',
+    logo: null,
+    platform: 'custom',
+    base_url: 'http://127.0.0.1:8787/v1',
+    i18nKey: 'settings.platformPair',
+  },
+  {
+    name: 'Ideas (ideus.ai)',
+    value: 'Ideas',
+    logo: null,
+    platform: 'custom',
+    base_url: 'https://api.ideus.ai/v1',
+    i18nKey: 'settings.platformIdeas',
+  },
+
   // Moonshot/Kimi 战略合作伙伴，紧随 Custom 置顶 / Strategic partner pinned right after Custom
   {
     name: 'Moonshot (China)',

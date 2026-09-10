@@ -103,7 +103,7 @@ export const DEFAULT_IMAGE_EXTENSION = '.png';
 
 /**
  * Ideas / Projecto local port map:
- * 3000 Projecto shell-router · 3010 Flowise · 3011 Ideas WebUI · 3012 multi-instance WebUI
+ * 3000 Projecto shell-router · 3010 OpenIdeas primary · 3011 Ideas WebUI · 3012 whitelabel WebUI · 3013 OpenIdeas whitelabel
  * (Upstream AionUi used 25808/25809/25810.)
  */
 export const WEBUI_DEFAULT_PORT = (() => {

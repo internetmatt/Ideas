@@ -205,7 +205,17 @@ function resolveDevIntegrationsOverride(): Record<string, unknown> | null {
   // stand in for what the Projecto proxy injects.
   const cliName = process.env.AIONUI_CLI_NAME?.trim();
   const coreName = process.env.AIONUI_CORE_NAME?.trim();
-  if (!productName && !whitelabel && !cliName && !coreName) return null;
+  const systemModelSource = process.env.AIONUI_SYSTEM_MODEL_SOURCE?.trim().toLowerCase();
+  const pairBaseUrl = process.env.AIONUI_PAIR_BASE_URL?.trim();
+  const pairApiKey = process.env.AIONUI_PAIR_API_KEY?.trim();
+  const ideasBaseUrl = process.env.AIONUI_IDEAS_BASE_URL?.trim();
+  const ideasApiKey = process.env.AIONUI_IDEAS_API_KEY?.trim();
+  const systemProvidersRaw = process.env.AIONUI_SYSTEM_PROVIDERS_JSON?.trim();
+
+  const hasSystemModel =
+    !!systemModelSource || !!pairBaseUrl || !!pairApiKey || !!ideasBaseUrl || !!ideasApiKey || !!systemProvidersRaw;
+
+  if (!productName && !whitelabel && !cliName && !coreName && !hasSystemModel) return null;
   const integrations: Record<string, unknown> = {};
   if (productName) integrations.productName = productName;
   if (whitelabel) integrations.whitelabel = whitelabel;
@@ -213,6 +223,22 @@ function resolveDevIntegrationsOverride(): Record<string, unknown> | null {
   if (coreName) integrations.coreName = coreName;
   integrations.canvasIsland = true;
   integrations.flowiseUrl = CANVAS_ISLAND_MOUNT;
+
+  if (systemModelSource === 'pair' || systemModelSource === 'ideas' || systemModelSource === 'custom') {
+    integrations.defaultSystemModelSource = systemModelSource;
+  }
+  if (pairBaseUrl) integrations.pairBaseUrl = pairBaseUrl;
+  if (pairApiKey) integrations.pairApiKey = pairApiKey;
+  if (ideasBaseUrl) integrations.ideasBaseUrl = ideasBaseUrl;
+  if (ideasApiKey) integrations.ideasApiKey = ideasApiKey;
+  if (systemProvidersRaw) {
+    try {
+      const parsed = JSON.parse(systemProvidersRaw) as unknown;
+      if (Array.isArray(parsed)) integrations.systemProviders = parsed;
+    } catch {
+      // Ignore malformed JSON — branding inject should still succeed.
+    }
+  }
   return integrations;
 }
 

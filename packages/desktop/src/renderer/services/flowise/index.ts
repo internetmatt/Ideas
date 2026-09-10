@@ -53,11 +53,15 @@ export {
   parseFlowiseDocumentStoreList,
   parseFlowiseMarketplaceTemplate,
   parseFlowiseMarketplaceTemplateList,
+  parseFlowisePredictResult,
   parseFlowiseTool,
   parseFlowiseToolList,
   pingFlowise,
+  predictChatflow,
   updateApiKey,
   updateTool,
+  type FlowisePredictRequest,
+  type FlowisePredictResult,
 } from './client';
 export {
   CANVAS_SETTINGS_PAGES,

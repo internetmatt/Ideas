@@ -93,6 +93,12 @@ vi.mock('@/common', () => ({
   },
 }));
 
+// OpenIdeas session-workflow send (#12) runs before ACP IPC. Without a stub,
+// getConversationOrNull never resolves in this harness and sendMessage is never called.
+vi.mock('@/renderer/pages/conversation/Workflow/sessionWorkflowSend', () => ({
+  trySendViaSessionWorkflow: vi.fn().mockResolvedValue(false),
+}));
+
 vi.mock('@/renderer/components/chat/SendBox', () => ({
   default: ({
     onSend,
