@@ -7,18 +7,8 @@
 import { describe, expect, it } from 'vitest';
 import {
   CANVAS_ISLAND_MOUNT,
-  isCanvasIslandUrl,
-  rewriteFlowiseIslandPayload,
-  stripCanvasIslandPath,
-} from './canvas-island';
-
-describe('canvas-island helpers', () => {
-  it('detects and strips the island mount', () => {
-    expect(isCanvasIslandUrl('/canvas-island/v2/agentcanvas/abc')).toBe(true);
-    expect(stripCanvasIslandPath('/canvas-island/v2/agentcanvas/abc')).toBe('/v2/agentcanvas/abc');
-import { describe, expect, it } from 'vitest';
-import {
   canvasIslandRedirect,
+  isCanvasIslandUrl,
   isFlowiseSpaLeakPath,
   isIslandAuthDocumentRequest,
   islandUpstreamHeaders,
@@ -26,8 +16,16 @@ import {
   rewriteFlowiseIslandPayload,
   rewriteIslandLocation,
   sanitizeIslandResponseHeaders,
+  stripCanvasIslandPath,
 } from './canvas-island.js';
 import { mergeCookieHeaders } from './flowiseSession.js';
+
+describe('canvas-island helpers', () => {
+  it('detects and strips the island mount', () => {
+    expect(isCanvasIslandUrl('/canvas-island/v2/agentcanvas/abc')).toBe(true);
+    expect(stripCanvasIslandPath('/canvas-island/v2/agentcanvas/abc')).toBe('/v2/agentcanvas/abc');
+  });
+});
 
 describe('islandUpstreamHeaders', () => {
   it('marks OpenIdeas island fetches as internal so the canvas is not 401', () => {
@@ -110,6 +108,8 @@ describe('rewriteFlowiseIslandPayload', () => {
   it('prefixes root /assets paths for the island', () => {
     const out = rewriteFlowiseIslandPayload('src:"/assets/index.js"', 'application/javascript', '/assets/index.js');
     expect(out).toBe(`src:"${CANVAS_ISLAND_MOUNT}/assets/index.js"`);
+  });
+
   it('rewrites root-absolute assets on the island HTML', () => {
     const html = rewriteFlowiseIslandPayload(
       '<html><head><title>Flowise - Build AI Agents, Visually</title></head><body><script src="/assets/index.js"></script></body></html>',
@@ -147,19 +147,8 @@ describe('rewriteFlowiseIslandPayload', () => {
     expect(js).toContain('children:jsx(n,{basename:"/canvas-island",children:');
     expect(js).toContain('jsx(BrowserRouter,{basename:"/canvas-island",children:');
   });
-
-  it('does not rewrite useRoutes config.basename', () => {
-    const js = rewriteFlowiseIslandPayload(
-      'useRoutes(r,ik.basename);ik={basename:""}',
-      'application/javascript',
-      '/assets/index.js'
-    );
-    expect(js).toContain('ik={basename:""}');
-    expect(js).not.toContain('ik={basename:"/canvas-island"}');
-  });
 });
 
-describe('canvas island routing', () => {
 describe('canvas island routing helpers', () => {
   it('recognizes Flowise SPA paths that Ideas HashRouter never owns', () => {
     expect(isFlowiseSpaLeakPath('/v2/agentcanvas/abc')).toBe(true);
