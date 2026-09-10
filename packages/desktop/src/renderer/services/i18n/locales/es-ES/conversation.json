@@ -792,6 +792,15 @@
     "openDirect": "Open direct",
     "statusOnline": "online",
     "statusOffline": "offline",
-    "statusChecking": "checking"
+    "statusChecking": "checking",
+    "newChatflow": "New chatflow",
+    "untitledChatflow": "Untitled Chatflow",
+    "untitledAgentflow": "Untitled Agent",
+    "openIdeasOffline": "OpenIdeas is offline on this host.",
+    "emptySessionHint": "Pick an existing chatflow or agentflow, or create a new one for this session.",
+    "emptyCanvasHint": "Pick a chatflow or agentflow from the list, or create a new one.",
+    "predictFailed": "OpenIdeas no pudo responder este mensaje.",
+    "listFailed": "No se pudieron cargar los flujos de OpenIdeas.",
+    "createFailed": "No se pudo crear ese flujo de OpenIdeas."
   }
 }

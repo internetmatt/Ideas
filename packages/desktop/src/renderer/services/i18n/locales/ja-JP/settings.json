@@ -474,6 +474,7 @@
     "tools": "ツール"
   },
   "webui": "リモート接続",
+  "flowise": "Flowise",
   "installed": "インストール済み",
   "builtin": "内蔵",
   "channels": "チャンネル",

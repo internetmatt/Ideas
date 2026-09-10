@@ -26,9 +26,12 @@ import path from 'node:path';
 import serveHandler from 'serve-handler';
 import {
   CANVAS_ISLAND_MOUNT,
+  canvasIslandRedirect,
   forwardToFlowiseIsland,
   isCanvasIslandUrl,
   isFlowiseApiStolenByIdeas,
+  isFlowiseSpaLeakPath,
+  isIslandAuthDocumentRequest,
   parseFlowiseOrigin,
   type FlowiseOrigin,
 } from './canvas-island.js';
@@ -196,7 +199,17 @@ function resolveDevIntegrationsOverride(): Record<string, unknown> | null {
   // stand in for what the Projecto proxy injects.
   const cliName = process.env.AIONUI_CLI_NAME?.trim();
   const coreName = process.env.AIONUI_CORE_NAME?.trim();
-  if (!productName && !whitelabel && !cliName && !coreName) return null;
+  const systemModelSource = process.env.AIONUI_SYSTEM_MODEL_SOURCE?.trim().toLowerCase();
+  const pairBaseUrl = process.env.AIONUI_PAIR_BASE_URL?.trim();
+  const pairApiKey = process.env.AIONUI_PAIR_API_KEY?.trim();
+  const ideasBaseUrl = process.env.AIONUI_IDEAS_BASE_URL?.trim();
+  const ideasApiKey = process.env.AIONUI_IDEAS_API_KEY?.trim();
+  const systemProvidersRaw = process.env.AIONUI_SYSTEM_PROVIDERS_JSON?.trim();
+
+  const hasSystemModel =
+    !!systemModelSource || !!pairBaseUrl || !!pairApiKey || !!ideasBaseUrl || !!ideasApiKey || !!systemProvidersRaw;
+
+  if (!productName && !whitelabel && !cliName && !coreName && !hasSystemModel) return null;
   const integrations: Record<string, unknown> = {};
   if (productName) integrations.productName = productName;
   if (whitelabel) integrations.whitelabel = whitelabel;
@@ -204,6 +217,22 @@ function resolveDevIntegrationsOverride(): Record<string, unknown> | null {
   if (coreName) integrations.coreName = coreName;
   integrations.canvasIsland = true;
   integrations.flowiseUrl = CANVAS_ISLAND_MOUNT;
+
+  if (systemModelSource === 'pair' || systemModelSource === 'ideas' || systemModelSource === 'custom') {
+    integrations.defaultSystemModelSource = systemModelSource;
+  }
+  if (pairBaseUrl) integrations.pairBaseUrl = pairBaseUrl;
+  if (pairApiKey) integrations.pairApiKey = pairApiKey;
+  if (ideasBaseUrl) integrations.ideasBaseUrl = ideasBaseUrl;
+  if (ideasApiKey) integrations.ideasApiKey = ideasApiKey;
+  if (systemProvidersRaw) {
+    try {
+      const parsed = JSON.parse(systemProvidersRaw) as unknown;
+      if (Array.isArray(parsed)) integrations.systemProviders = parsed;
+    } catch {
+      // Ignore malformed JSON — branding inject should still succeed.
+    }
+  }
   return integrations;
 }
 
@@ -297,6 +326,25 @@ export async function startStaticServer(opts: StaticServerOptions): Promise<Stat
       }
       if (isFlowiseApiStolenByIdeas(req.url, typeof req.headers.referer === 'string' ? req.headers.referer : undefined)) {
         forwardToFlowiseIsland(req, res, flowiseOrigin, req.url);
+        return;
+      }
+
+      // Flowise BrowserRouter drops `/canvas-island` and the iframe lands on
+      // Ideas (`/v2/agentcanvas`, `/chatflows`, …). Put it back on the mount.
+      if (isFlowiseSpaLeakPath(req.url)) {
+        res.writeHead(302, { location: canvasIslandRedirect(req.url), 'cache-control': 'no-store' });
+        res.end();
+        return;
+      }
+      if (
+        isIslandAuthDocumentRequest(
+          req.method,
+          req.url,
+          typeof req.headers.referer === 'string' ? req.headers.referer : undefined
+        )
+      ) {
+        res.writeHead(302, { location: canvasIslandRedirect(req.url), 'cache-control': 'no-store' });
+        res.end();
         return;
       }
 

@@ -3,70 +3,186 @@
  * Copyright 2025 AionUi (aionui.com)
  * SPDX-License-Identifier: Apache-2.0
  *
- * Full-page OpenIdeas canvas. The iframe stays an island; Ideas only uses the typed client.
+ * Full-page OpenIdeas canvas: list every chatflow / agentflow, create either,
+ * and optionally attach the selection to the active conversation.
  */
 
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { Button, Select, Tag } from '@arco-design/web-react';
-import { ShareOne, Refresh } from '@icon-park/react';
+import { Button, Message, Select, Tag } from '@arco-design/web-react';
+import { Export, Refresh, ShareOne } from '@icon-park/react';
 import { useTranslation } from 'react-i18next';
+import { ipcBridge } from '@/common';
+import type { TChatConversation } from '@/common/config/storage';
+import { useCurrentConversation } from '@renderer/pages/conversation/explorer/currentConversationStore';
+import { getConversationOrNull } from '@renderer/pages/conversation/utils/conversationCache';
+import {
+  attachmentFromChatflow,
+  readSessionWorkflow,
+  type SessionWorkflowAttachment,
+} from '@renderer/pages/conversation/Workflow/sessionWorkflow';
 import {
   buildFlowiseEmbedUrl,
   createBlankAgentflow,
+  createBlankChatflow,
   listChatflows,
   pingFlowise,
   resolveFlowiseUrl,
   type FlowiseChatflow,
 } from '@renderer/services/flowise';
+import { canvasNameForAssistant, flowOptionLabel, flowsForPicker } from './flowisePageModel';
 
 const FlowisePage: React.FC = () => {
   const { t } = useTranslation();
+  const conversationId = useCurrentConversation();
   const flowiseUrl = useMemo(() => resolveFlowiseUrl(), []);
-  const [frameKey, setFrameKey] = useState(0);
   const [status, setStatus] = useState<'checking' | 'online' | 'offline'>('checking');
+  const [conversation, setConversation] = useState<TChatConversation | null>(null);
   const [flows, setFlows] = useState<FlowiseChatflow[]>([]);
   const [selectedId, setSelectedId] = useState<string | undefined>();
-  const [busy, setBusy] = useState(false);
+  const [busy, setBusy] = useState<'chatflow' | 'agentflow' | null>(null);
+  const [frameEpoch, setFrameEpoch] = useState(0);
 
+  const attachment = useMemo(() => readSessionWorkflow(conversation?.extra), [conversation]);
+  const assistantName = conversation?.assistant?.name || conversation?.name || '';
+  const pickerFlows = useMemo(() => flowsForPicker(flows), [flows]);
   const selected = flows.find((flow) => flow.id === selectedId);
+  const resolvedFlowType = selected?.type || attachment?.flow_type;
+
   const embedUrl = useMemo(
-    () => buildFlowiseEmbedUrl({ baseUrl: flowiseUrl, flowId: selectedId, flowType: selected?.type }),
-    [flowiseUrl, selectedId, selected?.type]
+    () =>
+      buildFlowiseEmbedUrl({
+        baseUrl: flowiseUrl,
+        flowId: selectedId,
+        conversationId: conversation?.id,
+        flowType: resolvedFlowType,
+      }),
+    [flowiseUrl, selectedId, resolvedFlowType, conversation?.id]
+  );
+
+  const persistAttachment = useCallback(
+    async (next: SessionWorkflowAttachment | null) => {
+      if (!conversation) return;
+      await ipcBridge.conversation.update.invoke({
+        id: conversation.id,
+        updates: {
+          extra: {
+            ...(conversation.extra as Record<string, unknown>),
+            session_workflow: next ?? undefined,
+          } as TChatConversation['extra'],
+        },
+        merge_extra: true,
+      });
+      setConversation((current) =>
+        current
+          ? {
+              ...current,
+              extra: {
+                ...(current.extra as Record<string, unknown>),
+                session_workflow: next ?? undefined,
+              } as TChatConversation['extra'],
+            }
+          : current
+      );
+    },
+    [conversation]
   );
 
   const refresh = useCallback(async () => {
     const online = await pingFlowise(flowiseUrl);
     setStatus(online ? 'online' : 'offline');
+
+    const nextConversation = conversationId ? await getConversationOrNull(conversationId) : null;
+    setConversation(nextConversation);
+    const nextAttachment = readSessionWorkflow(nextConversation?.extra);
+
     if (!online) {
       setFlows([]);
+      setSelectedId(undefined);
       return;
     }
+
     try {
-      const next = await listChatflows(flowiseUrl);
-      setFlows(next);
-      setSelectedId((current) => current && next.some((flow) => flow.id === current) ? current : next[0]?.id);
+      const nextFlows = await listChatflows(flowiseUrl);
+      setFlows(nextFlows);
+      const pickable = flowsForPicker(nextFlows);
+      setSelectedId((current) => {
+        if (current && nextFlows.some((flow) => flow.id === current)) return current;
+        if (nextAttachment?.flow_id && nextFlows.some((flow) => flow.id === nextAttachment.flow_id)) {
+          return nextAttachment.flow_id;
+        }
+        return pickable[0]?.id;
+      });
     } catch {
       setFlows([]);
+      setSelectedId(undefined);
+      Message.error(t('conversation.workflow.listFailed'));
     }
-  }, [flowiseUrl]);
+  }, [conversationId, flowiseUrl, t]);
 
   useEffect(() => {
     void refresh();
-  }, [refresh, frameKey]);
+  }, [refresh]);
 
-  const onCreate = useCallback(async () => {
-    setBusy(true);
-    try {
-      const created = await createBlankAgentflow(flowiseUrl);
-      setFlows((current) => [created, ...current.filter((flow) => flow.id !== created.id)]);
-      setSelectedId(created.id);
-      setFrameKey((value) => value + 1);
-    } catch {
-      // keep picker; create can fail while ping still works
-    } finally {
-      setBusy(false);
-    }
-  }, [flowiseUrl]);
+  // Persist flow_type when the full-page canvas resolves it from the flow list.
+  useEffect(() => {
+    if (!conversation || !selectedId || !selected?.type) return;
+    if (attachment?.flow_id === selectedId && attachment.flow_type === selected.type) return;
+    void persistAttachment(attachmentFromChatflow(selected, flowiseUrl));
+  }, [attachment?.flow_id, attachment?.flow_type, conversation, flowiseUrl, persistAttachment, selected, selectedId]);
+
+  const onSelect = useCallback(
+    (flowId: string | undefined) => {
+      if (!flowId) {
+        setSelectedId(undefined);
+        if (conversation) {
+          void persistAttachment({
+            provider: 'flowise',
+            base_url: attachment?.base_url,
+            open_by_default: attachment?.open_by_default ?? true,
+          });
+        }
+        return;
+      }
+      const flow = flows.find((item) => item.id === flowId);
+      if (!flow) return;
+      setSelectedId(flow.id);
+      if (conversation) {
+        void persistAttachment(attachmentFromChatflow(flow, flowiseUrl));
+      }
+    },
+    [attachment?.base_url, attachment?.open_by_default, conversation, flows, flowiseUrl, persistAttachment]
+  );
+
+  const onCreate = useCallback(
+    async (kind: 'chatflow' | 'agentflow') => {
+      setBusy(kind);
+      try {
+        const created =
+          kind === 'chatflow'
+            ? await createBlankChatflow(flowiseUrl, canvasNameForAssistant(assistantName, 'CHATFLOW'))
+            : await createBlankAgentflow(flowiseUrl, canvasNameForAssistant(assistantName, 'AGENTFLOW'));
+        setFlows((current) => [created, ...current.filter((flow) => flow.id !== created.id)]);
+        setSelectedId(created.id);
+        if (conversation) {
+          await persistAttachment(attachmentFromChatflow(created, flowiseUrl));
+        }
+      } catch {
+        Message.error(t('conversation.workflow.createFailed'));
+      } finally {
+        setBusy(null);
+      }
+    },
+    [assistantName, conversation, flowiseUrl, persistAttachment, t]
+  );
+
+  const onReloadFrame = useCallback(() => {
+    setFrameEpoch((epoch) => epoch + 1);
+  }, []);
+
+  const onOpenDirect = useCallback(() => {
+    if (!embedUrl) return;
+    window.open(embedUrl, '_blank', 'noopener,noreferrer');
+  }, [embedUrl]);
 
   return (
     <section className='size-full min-h-0 flex flex-col bg-1' data-testid='flowise-page'>
@@ -83,40 +199,98 @@ const FlowisePage: React.FC = () => {
           </Tag>
           <Select
             size='small'
-            className='w-220px'
+            className='w-260px'
             placeholder={t('conversation.workflow.selectFlow')}
             value={selectedId}
-            onChange={(value) => setSelectedId(String(value))}
+            showSearch
+            allowClear
+            onChange={(value) => onSelect(value == null || value === '' ? undefined : String(value))}
             data-testid='flowise-flow-select'
           >
-            {flows.map((flow) => (
+            {pickerFlows.map((flow) => (
               <Select.Option key={flow.id} value={flow.id}>
-                {flow.name}
+                {flowOptionLabel(flow)}
               </Select.Option>
             ))}
           </Select>
-          <span className='text-12px text-t-secondary truncate'>{flowiseUrl}</span>
         </div>
-        <div className='flex items-center gap-8px'>
-          <Button size='small' loading={busy} onClick={() => void onCreate()} data-testid='flowise-new-agentflow'>
+        <div className='flex items-center gap-8px shrink-0'>
+          {selectedId && status === 'online' ? (
+            <>
+              <Button
+                size='small'
+                type='text'
+                icon={<Refresh />}
+                onClick={onReloadFrame}
+                aria-label={t('conversation.workflow.reload')}
+                data-testid='flowise-reload'
+              >
+                {t('conversation.workflow.reload')}
+              </Button>
+              <Button
+                size='small'
+                type='text'
+                icon={<Export />}
+                onClick={onOpenDirect}
+                aria-label={t('conversation.workflow.openDirect')}
+                data-testid='flowise-open-direct'
+              >
+                {t('conversation.workflow.openDirect')}
+              </Button>
+            </>
+          ) : null}
+          <Button
+            size='small'
+            loading={busy === 'chatflow'}
+            disabled={status !== 'online' || busy !== null}
+            onClick={() => void onCreate('chatflow')}
+            data-testid='flowise-new-chatflow'
+          >
+            {t('conversation.workflow.newChatflow')}
+          </Button>
+          <Button
+            size='small'
+            type='primary'
+            loading={busy === 'agentflow'}
+            disabled={status !== 'online' || busy !== null}
+            onClick={() => void onCreate('agentflow')}
+            data-testid='flowise-new-agentflow'
+          >
             {t('conversation.workflow.newAgentflow')}
-          </Button>
-          <Button size='small' icon={<Refresh />} onClick={() => setFrameKey((value) => value + 1)}>
-            {t('conversation.workflow.reload')}
-          </Button>
-          <Button size='small' type='primary' onClick={() => window.open(embedUrl, '_blank', 'noopener,noreferrer')}>
-            {t('conversation.workflow.openDirect')}
           </Button>
         </div>
       </header>
-      <iframe
-        key={`${frameKey}:${selectedId ?? 'root'}`}
-        className='flex-1 min-h-0 w-full border-0 bg-1'
-        title={t('conversation.workflow.canvas')}
-        src={embedUrl}
-        allow='clipboard-read; clipboard-write; microphone; camera; autoplay; fullscreen'
-        data-testid='flowise-frame'
-      />
+      {selectedId && status === 'online' ? (
+        <iframe
+          key={`${selectedId}:${resolvedFlowType ?? 'unknown'}:${frameEpoch}`}
+          className='flex-1 min-h-0 w-full border-0 bg-1'
+          title={selected?.name || t('conversation.workflow.canvas')}
+          src={embedUrl}
+          allow='clipboard-read; clipboard-write; microphone; camera; autoplay; fullscreen'
+          data-testid='flowise-frame'
+        />
+      ) : (
+        <div className='flex-1 min-h-0 flex items-center justify-center px-24px' data-testid='flowise-empty'>
+          <div className='max-w-420px text-center text-13px text-t-secondary leading-22px'>
+            {status === 'offline' ? t('conversation.workflow.openIdeasOffline') : t('conversation.workflow.emptyCanvasHint')}
+            {status === 'online' ? (
+              <div className='mt-16px flex items-center justify-center gap-8px'>
+                <Button size='small' loading={busy === 'chatflow'} onClick={() => void onCreate('chatflow')}>
+                  {t('conversation.workflow.newChatflow')}
+                </Button>
+                <Button
+                  size='small'
+                  type='primary'
+                  loading={busy === 'agentflow'}
+                  onClick={() => void onCreate('agentflow')}
+                >
+                  {t('conversation.workflow.newAgentflow')}
+                </Button>
+              </div>
+            ) : null}
+          </div>
+        </div>
+      )}
     </section>
   );
 };

@@ -1,8 +1,20 @@
-// Bumped to v3: catch networkOnly fetch failures (server flaps / stale hashes)
-// and never intercept `/canvas-island/` (OpenIdeas same-origin iframe).
-const CACHE_NAME = 'aionui-webui-v3';
+// Bumped to v4: do not intercept Flowise SPA leaks (`/v2`, `/chatflows`, …).
+const CACHE_NAME = 'aionui-webui-v4';
 const NON_CACHEABLE_PATHS = new Set(['/qr-login']);
 const CANVAS_ISLAND_PREFIX = '/canvas-island';
+const FLOWISE_SPA_PREFIXES = [
+  '/v2',
+  '/canvas',
+  '/agentcanvas',
+  '/chatflows',
+  '/agentflows',
+  '/marketplaces',
+  '/marketplace',
+  '/signin',
+  '/chatbot',
+  '/execution',
+  '/document-stores',
+];
 const OFFLINE_PAGE_URL = new URL('./index.html', self.location.href).toString();
 const PRECACHE_URLS = [
   new URL('./', self.location.href).toString(),
@@ -61,6 +73,9 @@ function shouldHandleRequest(request) {
   }
 
   if (url.pathname === CANVAS_ISLAND_PREFIX || url.pathname.startsWith(`${CANVAS_ISLAND_PREFIX}/`)) {
+    return false;
+  }
+  if (FLOWISE_SPA_PREFIXES.some((prefix) => url.pathname === prefix || url.pathname.startsWith(`${prefix}/`))) {
     return false;
   }
 

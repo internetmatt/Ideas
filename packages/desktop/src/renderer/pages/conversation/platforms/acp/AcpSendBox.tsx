@@ -27,6 +27,7 @@ import { useLayoutContext } from '@/renderer/hooks/context/LayoutContext';
 import { useOpenFileSelector } from '@/renderer/hooks/file/useOpenFileSelector';
 import { useLatestRef } from '@/renderer/hooks/ui/useLatestRef';
 import { useAddOrUpdateMessage } from '@/renderer/pages/conversation/Messages/hooks';
+import { trySendViaSessionWorkflow } from '@/renderer/pages/conversation/Workflow/sessionWorkflowSend';
 import {
   useConversationCommandQueue,
   type ConversationCommandQueueItem,
@@ -297,6 +298,16 @@ const AcpSendBox: React.FC<{
           return;
         }
 
+        const handledByWorkflow = await trySendViaSessionWorkflow({
+          conversationId: conversation_id,
+          input,
+          addOrUpdateMessage,
+          errorMessage: t('conversation.workflow.predictFailed'),
+        });
+        if (handledByWorkflow) {
+          return;
+        }
+
         markSendStarted();
         setAiProcessing(true);
         const result = await ipcBridge.acpConversation.sendMessage.invoke({
@@ -390,6 +401,7 @@ Please check your local CLI tool authentication status`,
       }
     },
     [
+      addOrUpdateMessage,
       backend,
       checkAndUpdateTitle,
       conversation_id,

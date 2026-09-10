@@ -8,3 +8,7 @@ export { default as SessionWorkflowPanel } from './SessionWorkflowPanel';
 export { SessionWorkflowProvider, useSessionWorkflow, useOptionalSessionWorkflow } from './SessionWorkflowContext';
 export { useSessionWorkflowChrome } from './useSessionWorkflowChrome';
 export { readSessionWorkflow, type SessionWorkflowAttachment, type SessionWorkflowExtra } from './sessionWorkflow';
+export {
+  trySendViaSessionWorkflow,
+  isSessionWorkflowReady,
+} from './sessionWorkflowSend';

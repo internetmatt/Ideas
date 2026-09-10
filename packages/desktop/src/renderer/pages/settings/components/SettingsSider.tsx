@@ -13,6 +13,7 @@ import {
   Lightning,
   LinkCloud,
   Puzzle,
+  ShareOne,
   Speed,
   System,
   Toolkit,
@@ -32,6 +33,7 @@ export const BUILTIN_TAB_IDS = [
   'tools',
   'appearance',
   'webui',
+  'flowise',
   'pet',
   'system',
   'archived',
@@ -111,6 +113,7 @@ const SettingsSider: React.FC<{ collapsed?: boolean; tooltipEnabled?: boolean }>
         icon: isDesktop ? <Earth /> : <Communication />,
         path: 'webui',
       },
+      flowise: { id: 'flowise', label: t('settings.flowise'), icon: <ShareOne />, path: 'flowise' },
       pet: { id: 'pet', label: t('pet.desktopPet'), icon: <Cat />, path: 'pet' },
       system: { id: 'system', label: t('settings.system'), icon: <System />, path: 'system' },
       archived: {

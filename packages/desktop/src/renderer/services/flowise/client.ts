@@ -7,7 +7,13 @@
  */
 
 import { resolveFlowiseUrl } from './resolveFlowiseUrl';
-import { DEFAULT_FLOWISE_WORKSPACE_ID, EMPTY_FLOW_DATA, FLOWISE_FLOW_TYPES, type FlowiseChatflow, type FlowiseFlowType } from './types';
+import {
+  DEFAULT_FLOWISE_WORKSPACE_ID,
+  EMPTY_FLOW_DATA,
+  FLOWISE_FLOW_TYPES,
+  type FlowiseChatflow,
+  type FlowiseFlowType,
+} from './types';
 
 const INTERNAL_HEADERS = {
   Accept: 'application/json',
@@ -33,7 +39,8 @@ export function parseFlowiseChatflow(raw: unknown): FlowiseChatflow | null {
   const row = raw as Record<string, unknown>;
   if (typeof row.id !== 'string' || !row.id) return null;
   if (typeof row.name !== 'string') return null;
-  const workspaceId = typeof row.workspaceId === 'string' && row.workspaceId ? row.workspaceId : DEFAULT_FLOWISE_WORKSPACE_ID;
+  const workspaceId =
+    typeof row.workspaceId === 'string' && row.workspaceId ? row.workspaceId : DEFAULT_FLOWISE_WORKSPACE_ID;
   return {
     id: row.id,
     name: row.name,
@@ -46,15 +53,26 @@ export function parseFlowiseChatflow(raw: unknown): FlowiseChatflow | null {
 }
 
 function parseFlowiseChatflowList(raw: unknown): FlowiseChatflow[] {
-  const rows = Array.isArray(raw) ? raw : raw && typeof raw === 'object' && Array.isArray((raw as { data?: unknown }).data) ? (raw as { data: unknown[] }).data : [];
+  const rows = Array.isArray(raw)
+    ? raw
+    : raw && typeof raw === 'object' && Array.isArray((raw as { data?: unknown }).data)
+      ? (raw as { data: unknown[] }).data
+      : [];
   return rows.map(parseFlowiseChatflow).filter((row): row is FlowiseChatflow => row !== null);
 }
 
+/** Same-origin `/canvas-island` can reuse the OpenIdeas iframe session cookies. */
+function flowiseCredentials(baseUrl: string): RequestCredentials {
+  const resolved = resolveFlowiseUrl(baseUrl);
+  return resolved.startsWith('/') ? 'same-origin' : 'omit';
+}
+
 async function flowiseFetch(baseUrl: string, path: string, init?: RequestInit): Promise<unknown> {
-  const url = `${resolveFlowiseUrl(baseUrl)}${path}`;
+  const resolvedBase = resolveFlowiseUrl(baseUrl);
+  const url = `${resolvedBase}${path}`;
   const response = await fetch(url, {
     ...init,
-    credentials: 'omit',
+    credentials: flowiseCredentials(resolvedBase),
     headers: {
       ...INTERNAL_HEADERS,
       ...(init?.body ? { 'Content-Type': 'application/json' } : {}),
@@ -71,8 +89,9 @@ async function flowiseFetch(baseUrl: string, path: string, init?: RequestInit): 
 
 export async function pingFlowise(baseUrl?: string, signal?: AbortSignal): Promise<boolean> {
   try {
-    const url = `${resolveFlowiseUrl(baseUrl)}/api/v1/ping`;
-    const response = await fetch(url, { signal, credentials: 'omit' });
+    const resolvedBase = resolveFlowiseUrl(baseUrl);
+    const url = `${resolvedBase}/api/v1/ping`;
+    const response = await fetch(url, { signal, credentials: flowiseCredentials(resolvedBase) });
     return response.ok;
   } catch {
     return false;
@@ -85,22 +104,105 @@ export async function listChatflows(baseUrl?: string, type?: FlowiseFlowType): P
 }
 
 export async function getChatflow(baseUrl: string | undefined, id: string): Promise<FlowiseChatflow> {
-  const parsed = parseFlowiseChatflow(await flowiseFetch(resolveFlowiseUrl(baseUrl), `/api/v1/chatflows/${encodeURIComponent(id)}`));
+  const parsed = parseFlowiseChatflow(
+    await flowiseFetch(resolveFlowiseUrl(baseUrl), `/api/v1/chatflows/${encodeURIComponent(id)}`)
+  );
   if (!parsed) throw new FlowiseClientError('OpenIdeas returned an invalid chatflow', 502);
   return parsed;
 }
 
-export async function createBlankAgentflow(baseUrl?: string, name = 'Untitled Agent'): Promise<FlowiseChatflow> {
+async function createBlankFlow(
+  baseUrl: string | undefined,
+  name: string,
+  type: Extract<FlowiseFlowType, 'CHATFLOW' | 'AGENTFLOW'>
+): Promise<FlowiseChatflow> {
   const parsed = parseFlowiseChatflow(
     await flowiseFetch(resolveFlowiseUrl(baseUrl), '/api/v1/chatflows', {
       method: 'POST',
       body: JSON.stringify({
         name,
-        type: 'AGENTFLOW',
+        type,
         flowData: EMPTY_FLOW_DATA,
       }),
     })
   );
   if (!parsed) throw new FlowiseClientError('OpenIdeas create returned an invalid chatflow', 502);
   return parsed;
+}
+
+export async function createBlankChatflow(baseUrl?: string, name = 'Untitled Chatflow'): Promise<FlowiseChatflow> {
+  return createBlankFlow(baseUrl, name, 'CHATFLOW');
+}
+
+export async function createBlankAgentflow(baseUrl?: string, name = 'Untitled Agent'): Promise<FlowiseChatflow> {
+  return createBlankFlow(baseUrl, name, 'AGENTFLOW');
+}
+
+export type FlowisePredictRequest = {
+  question: string;
+  chatId?: string;
+};
+
+export type FlowisePredictResult = {
+  text: string;
+  chatId?: string;
+  chatMessageId?: string;
+  raw: unknown;
+};
+
+/** Extract assistant text from an OpenIdeas / Flowise prediction payload. */
+export function parseFlowisePredictResult(raw: unknown): FlowisePredictResult {
+  if (typeof raw === 'string') {
+    return { text: raw, raw };
+  }
+  if (!raw || typeof raw !== 'object') {
+    return { text: '', raw };
+  }
+  const row = raw as Record<string, unknown>;
+  let text = '';
+  if (typeof row.text === 'string') {
+    text = row.text;
+  } else if (typeof row.json === 'string') {
+    text = row.json;
+  } else if (row.json != null) {
+    text = JSON.stringify(row.json);
+  } else if (typeof row.message === 'string') {
+    text = row.message;
+  }
+  return {
+    text,
+    chatId: typeof row.chatId === 'string' ? row.chatId : undefined,
+    chatMessageId: typeof row.chatMessageId === 'string' ? row.chatMessageId : undefined,
+    raw,
+  };
+}
+
+/**
+ * Run a non-streaming OpenIdeas prediction for an attached chatflow/agentflow.
+ * Uses the internal prediction endpoint (same auth posture as the canvas editor).
+ */
+export async function predictChatflow(
+  baseUrl: string | undefined,
+  chatflowId: string,
+  request: FlowisePredictRequest
+): Promise<FlowisePredictResult> {
+  if (!chatflowId) {
+    throw new FlowiseClientError('OpenIdeas chatflow id is required', 400);
+  }
+  if (!request.question.trim()) {
+    throw new FlowiseClientError('OpenIdeas question is required', 400);
+  }
+  const raw = await flowiseFetch(
+    resolveFlowiseUrl(baseUrl),
+    `/api/v1/internal-prediction/${encodeURIComponent(chatflowId)}`,
+    {
+      method: 'POST',
+      body: JSON.stringify({
+        question: request.question,
+        chatId: request.chatId,
+        streaming: false,
+      }),
+    }
+  );
+  return parseFlowisePredictResult(raw);
 }

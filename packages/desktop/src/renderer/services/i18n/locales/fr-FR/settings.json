@@ -474,6 +474,7 @@
     "tools": "MCP & Voix"
   },
   "webui": "Distant",
+  "flowise": "Flowise",
   "installed": "Installé",
   "builtin": "Intégré",
   "channels": "Canaux",

@@ -791,6 +791,15 @@
     "openDirect": "Open direct",
     "statusOnline": "online",
     "statusOffline": "offline",
-    "statusChecking": "checking"
+    "statusChecking": "checking",
+    "newChatflow": "New chatflow",
+    "untitledChatflow": "Untitled Chatflow",
+    "untitledAgentflow": "Untitled Agent",
+    "openIdeasOffline": "OpenIdeas is offline on this host.",
+    "emptySessionHint": "Pick an existing chatflow or agentflow, or create a new one for this session.",
+    "emptyCanvasHint": "Pick a chatflow or agentflow from the list, or create a new one.",
+    "predictFailed": "OpenIdeas가 이 메시지에 응답할 수 없습니다.",
+    "listFailed": "OpenIdeas 플로우를 불러오지 못했습니다.",
+    "createFailed": "OpenIdeas 플로우를 만들지 못했습니다."
   }
 }

@@ -474,6 +474,7 @@
     "tools": "도구"
   },
   "webui": "원격 연결",
+  "flowise": "Flowise",
   "installed": "설치됨",
   "builtin": "내장",
   "channels": "채널",
