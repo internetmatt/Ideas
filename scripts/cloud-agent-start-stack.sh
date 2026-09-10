@@ -74,6 +74,11 @@ start_ideas_webui() {
   export AIONUI_NO_BUILD=1
   export AIONUI_OPEN_BROWSER=0
   export AIONUI_BACKEND_BIN="${HOME}/.local/bin/aioncore"
+  # Optional OpenIdeas service session so /canvas-island chatflow APIs work
+  # without every tester completing org-setup + sign-in in the iframe first.
+  if [[ -n "${AIONUI_FLOWISE_EMAIL:-}" && -n "${AIONUI_FLOWISE_PASSWORD:-}" ]]; then
+    export AIONUI_FLOWISE_EMAIL AIONUI_FLOWISE_PASSWORD
+  fi
   if [[ -n "${whitelabel}" ]]; then
     export AIONUI_WHITELABEL="${whitelabel}"
   else
@@ -111,6 +116,11 @@ export AIONUI_PRODUCT_NAME="${AIONUI_PRODUCT_NAME:-Ideas}"
 export AIONUI_NO_BUILD=1
 export AIONUI_OPEN_BROWSER=0
 export AIONUI_BACKEND_BIN="${HOME}/.local/bin/aioncore"
+# When set, Ideas attaches an OpenIdeas service session on /canvas-island so
+# chatflow APIs work for product testing without iframe org-setup first.
+if [[ -n "${AIONUI_FLOWISE_EMAIL:-}" && -n "${AIONUI_FLOWISE_PASSWORD:-}" ]]; then
+  export AIONUI_FLOWISE_EMAIL AIONUI_FLOWISE_PASSWORD
+fi
 unset AIONUI_MULTI_INSTANCE || true
 unset AIONUI_WHITELABEL || true
 

@@ -7,7 +7,9 @@ import {
   parseFlowiseOrigin,
   rewriteFlowiseIslandPayload,
   rewriteIslandLocation,
+  sanitizeIslandResponseHeaders,
 } from './canvas-island.js';
+import { mergeCookieHeaders } from './flowiseSession.js';
 
 describe('islandUpstreamHeaders', () => {
   it('marks OpenIdeas island fetches as internal so the canvas is not 401', () => {
@@ -15,6 +17,38 @@ describe('islandUpstreamHeaders', () => {
     expect(headers['x-request-from']).toBe('internal');
     expect(headers.host).toBe('127.0.0.1:3010');
     expect(headers['accept-encoding']).toBe('identity');
+  });
+
+  it('merges the service session cookie for product-test auth', () => {
+    const headers = islandUpstreamHeaders(
+      { cookie: 'browser=1' },
+      parseFlowiseOrigin('http://127.0.0.1:3010'),
+      'token=svc; connect.sid=abc'
+    );
+    expect(String(headers.cookie)).toContain('browser=1');
+    expect(String(headers.cookie)).toContain('token=svc');
+  });
+});
+
+describe('sanitizeIslandResponseHeaders', () => {
+  it('strips frame-busting headers so Ideas can embed the island', () => {
+    const headers = sanitizeIslandResponseHeaders({
+      'content-length': '12',
+      'x-frame-options': 'SAMEORIGIN',
+      'content-security-policy': "frame-ancestors 'self'",
+      'content-type': 'text/html',
+    });
+    expect(headers['x-frame-options']).toBeUndefined();
+    expect(headers['content-security-policy']).toBeUndefined();
+    expect(headers['content-length']).toBeUndefined();
+    expect(headers['cache-control']).toBe('no-store');
+    expect(headers['content-type']).toBe('text/html');
+  });
+});
+
+describe('mergeCookieHeaders', () => {
+  it('lets browser cookies override the service session', () => {
+    expect(mergeCookieHeaders('token=browser', 'token=service; refreshToken=r')).toBe('token=browser; refreshToken=r');
   });
 });
 
@@ -26,7 +60,7 @@ describe('rewriteFlowiseIslandPayload', () => {
       '/v2/agentcanvas/abc'
     );
     expect(html).toContain('src="/canvas-island/assets/index.js"');
-    expect(html).toContain('<base href="/canvas-island/">');
+    expect(html).toContain(`<base href="/canvas-island/">`);
     expect(html).toContain('<title>OpenIdeas</title>');
   });
 
@@ -46,6 +80,7 @@ describe('rewriteFlowiseIslandPayload', () => {
     expect(js).toContain('window.location.href="/canvas-island/login"');
     expect(js).toContain('window.location.origin+"/canvas-island"');
   });
+
   it('injects BrowserRouter basename for automatic-runtime jsx', () => {
     const js = rewriteFlowiseIslandPayload(
       ',{store:e,children:jsx(n,{children:jsx(App,{})};jsx(BrowserRouter,{children:App',
@@ -66,6 +101,8 @@ describe('rewriteFlowiseIslandPayload', () => {
     expect(js).not.toContain('ik={basename:"/canvas-island"}');
   });
 });
+
+describe('canvas island routing helpers', () => {
   it('recognizes Flowise SPA paths that Ideas HashRouter never owns', () => {
     expect(isFlowiseSpaLeakPath('/v2/agentcanvas/abc')).toBe(true);
     expect(isFlowiseSpaLeakPath('/chatflows')).toBe(true);
@@ -82,9 +119,7 @@ describe('rewriteFlowiseIslandPayload', () => {
 
   it('rewrites absolute 3010 Location headers onto the island', () => {
     const origin = parseFlowiseOrigin('http://127.0.0.1:3010');
-    expect(rewriteIslandLocation('http://127.0.0.1:3010/v2/agentcanvas', origin)).toBe(
-      '/canvas-island/v2/agentcanvas'
-    );
+    expect(rewriteIslandLocation('http://127.0.0.1:3010/v2/agentcanvas', origin)).toBe('/canvas-island/v2/agentcanvas');
     expect(rewriteIslandLocation('/chatflows', origin)).toBe('/canvas-island/chatflows');
   });
 });
