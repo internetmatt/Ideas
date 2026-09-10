@@ -16,6 +16,7 @@ import { type TFunction } from 'i18next';
 import type { NavigateFunction } from 'react-router-dom';
 import { mutate as swrMutate } from 'swr';
 import { getConversationCreateErrorMessage } from '@/renderer/pages/conversation/utils/conversationCreateError';
+import { attachChatflowToConversation } from '@/renderer/pages/conversation/Workflow/attachConversationChatflow';
 
 export type GuidSendDeps = {
   // Input state
@@ -211,6 +212,8 @@ export const useGuidSend = (deps: GuidSendDeps): GuidSendResult => {
 
         emitter.emit('chat.history.refresh');
 
+        await attachChatflowToConversation(conversation, input.trim() || conversation.name);
+
         // Empty input = "start chat": create the conversation but do not stash an
         // initial message, so the window opens idle on the empty state instead of
         // auto-sending a blank first turn.
@@ -264,6 +267,8 @@ export const useGuidSend = (deps: GuidSendDeps): GuidSendResult => {
       }
 
       emitter.emit('chat.history.refresh');
+
+      await attachChatflowToConversation(conversation, input.trim() || conversation.name);
 
       // Empty input = "start chat": create the conversation but do not stash an
       // initial message, so the window opens idle on the empty state instead of

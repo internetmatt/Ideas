@@ -30,11 +30,17 @@ import {
   forwardToFlowiseIsland,
   isCanvasIslandUrl,
   isFlowiseApiStolenByIdeas,
+  isFlowiseAssetStolenByIdeas,
   isFlowiseSpaLeakPath,
   isIslandAuthDocumentRequest,
   parseFlowiseOrigin,
   type FlowiseOrigin,
 } from './canvas-island.js';
+import {
+  ideasLoginRedirectUrl,
+  resolveProjectoIntegrations,
+  type ProjectoIntegrationsPayload,
+} from './projecto-igloo-sync.js';
 
 export type StaticServerOptions = {
   staticDir: string;
@@ -236,6 +242,24 @@ function resolveDevIntegrationsOverride(): Record<string, unknown> | null {
   return integrations;
 }
 
+function mergeIntegrations(
+  projecto: ProjectoIntegrationsPayload | null,
+  branding: Record<string, unknown> | null
+): Record<string, unknown> | null {
+  if (!projecto && !branding) return null;
+  return {
+    ...(projecto ?? {}),
+    ...(branding ?? {}),
+    canvasIsland: true,
+    flowiseUrl: (branding?.flowiseUrl as string | undefined) || projecto?.flowiseUrl || CANVAS_ISLAND_MOUNT,
+  };
+}
+
+function requestOrigin(req: { headers: { host?: string | string[] } }): string {
+  const host = String(req.headers.host || '127.0.0.1:3011');
+  return `http://${host}`;
+}
+
 /** `JSON.stringify` output embedded in a `<script>` tag must not contain a raw `</`. */
 function toInlineScriptJson(value: unknown): string {
   return JSON.stringify(value).replace(/<\//g, '<\\/');
@@ -243,6 +267,19 @@ function toInlineScriptJson(value: unknown): string {
 
 function escapeHtml(value: string): string {
   return value.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+
+/**
+ * True when this request already came through Projecto :4715 (http-proxy xfwd).
+ * Calling back to `/api/projecto/ideas-integrations` in that case deadlocks:
+ * :4715 is waiting on this HTML, and this HTML waits on :4715 — cowork paints
+ * an empty `#root` because the Ideas module graph never arrives.
+ */
+export function isAlreadyBehindProjecto(req: Pick<IncomingMessage, 'headers'>): boolean {
+  const forwardedHost = String(req.headers['x-forwarded-host'] || '').trim();
+  if (forwardedHost) return true;
+  const plane = String(req.headers['x-projecto-plane'] || '').trim().toLowerCase();
+  return plane === 'cowork' || plane === 'ideas';
 }
 
 /**
@@ -328,6 +365,10 @@ export async function startStaticServer(opts: StaticServerOptions): Promise<Stat
         forwardToFlowiseIsland(req, res, flowiseOrigin, req.url);
         return;
       }
+      if (isFlowiseAssetStolenByIdeas(req.url, typeof req.headers.referer === 'string' ? req.headers.referer : undefined)) {
+        forwardToFlowiseIsland(req, res, flowiseOrigin, req.url);
+        return;
+      }
 
       // Flowise BrowserRouter drops `/canvas-island` and the iframe lands on
       // Ideas (`/v2/agentcanvas`, `/chatflows`, …). Put it back on the mount.
@@ -348,26 +389,58 @@ export async function startStaticServer(opts: StaticServerOptions): Promise<Stat
         return;
       }
 
+      // Ideas HashRouter lives at `/#/login`. GET /login is a document URL;
+      // aioncore only accepts POST /login, so a GET would 405. When Projecto
+      // / Igloo is reachable, bounce to that IdP instead of the AionUi form.
+      const loginPath = req.url.split('?')[0].split('#')[0];
+      if (
+        (loginPath === '/login' || loginPath === '/login/') &&
+        (req.method === 'GET' || req.method === 'HEAD')
+      ) {
+        if (isAlreadyBehindProjecto(req)) {
+          res.writeHead(302, { location: '/#/login', 'cache-control': 'no-store' });
+          res.end();
+          return;
+        }
+        const projecto = await resolveProjectoIntegrations({ allowRemote });
+        if (projecto) {
+          res.writeHead(302, {
+            location: ideasLoginRedirectUrl(projecto, requestOrigin(req)),
+            'cache-control': 'no-store',
+          });
+          res.end();
+          return;
+        }
+        res.writeHead(302, { location: '/#/login', 'cache-control': 'no-store' });
+        res.end();
+        return;
+      }
+
       // /api/* — reverse proxy to backend (includes /api/auth/*).
-      // /login and /logout are aionui-auth's top-level auth endpoints: proxy them too
-      // so WebUI browser clients reach the backend without a path-rewrite.
-      if (req.url.startsWith('/api/') || req.url.startsWith('/api?') || req.url === '/login' || req.url === '/logout') {
+      // POST /login and /logout are aionui-auth's top-level auth endpoints.
+      if (
+        req.url.startsWith('/api/') ||
+        req.url.startsWith('/api?') ||
+        req.url === '/login' ||
+        req.url === '/logout'
+      ) {
         forwardToBackend(req, res, opts.backendPort);
         return;
       }
 
-      // Local branding override (AIONUI_PRODUCT_NAME / AIONUI_WHITELABEL): only
-      // takes the injection path for requests that would resolve to the SPA
-      // shell, and only when the override env vars are actually set — every
-      // other request (real static assets) still goes through serve-handler
-      // unchanged.
-      const devIntegrations = resolveDevIntegrationsOverride();
-      if (devIntegrations && isIndexHtmlRequest(opts.staticDir, req.url)) {
-        const html = renderIndexHtmlWithOverride(opts.staticDir, devIntegrations);
-        if (html !== null) {
-          res.writeHead(200, { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-store' });
-          res.end(html);
-          return;
+      // Projecto / Igloo sync + local branding override. Only rewrite the SPA
+      // shell — real static assets still go through serve-handler unchanged.
+      // Skip the :4715 callback when we are already the cowork upstream.
+      if (isIndexHtmlRequest(opts.staticDir, req.url) && !isAlreadyBehindProjecto(req)) {
+        const projecto = await resolveProjectoIntegrations({ allowRemote });
+        const integrations = mergeIntegrations(projecto, resolveDevIntegrationsOverride());
+        if (integrations) {
+          const html = renderIndexHtmlWithOverride(opts.staticDir, integrations);
+          if (html !== null) {
+            res.writeHead(200, { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-store' });
+            res.end(html);
+            return;
+          }
         }
       }
 

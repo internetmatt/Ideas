@@ -55,6 +55,7 @@
     "newTask": "새 작업",
     "createViaChat": "대화로 생성",
     "createManually": "수동 생성",
+    "fromScheduledTemplate": "OpenIdeas 예약 템플릿에서",
     "description": "작업을 일정에 따라 자동 실행할 수 있습니다. 어떤 대화에서든 AionUi에게 예약 작업 생성을 요청할 수도 있습니다.",
     "awakeBanner": "예약 작업은 컴퓨터가 깨어 있는 동안에만 실행됩니다.",
     "keepAwake": "절전 방지",

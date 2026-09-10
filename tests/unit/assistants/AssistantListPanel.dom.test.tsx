@@ -12,6 +12,7 @@ import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest';
 import { render, screen, cleanup, fireEvent } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { ConfigProvider } from '@arco-design/web-react';
+import { MemoryRouter } from 'react-router-dom';
 
 // Mock dependencies
 vi.mock('@/renderer/hooks/context/LayoutContext', () => ({
@@ -32,7 +33,12 @@ vi.mock('./AssistantAvatar', () => ({
 import AssistantListPanel from '@/renderer/pages/settings/AssistantSettings/AssistantListPanel';
 import type { AssistantListItem } from '@/renderer/pages/settings/AssistantSettings/types';
 
-const renderWithProviders = (ui: React.ReactElement) => render(<ConfigProvider>{ui}</ConfigProvider>);
+const renderWithProviders = (ui: React.ReactElement) =>
+  render(
+    <MemoryRouter>
+      <ConfigProvider>{ui}</ConfigProvider>
+    </MemoryRouter>
+  );
 
 describe('AssistantListPanel', () => {
   const clickMenuItem = async (testId: string) => {
@@ -96,6 +102,15 @@ describe('AssistantListPanel', () => {
     const { container } = renderWithProviders(<AssistantListPanel {...defaultProps} assistants={[]} />);
     expect(container.querySelector('[data-testid="btn-create-assistant"]')).toBeInTheDocument();
     expect(screen.queryAllByTestId('avatar')).toHaveLength(0);
+  });
+
+  it('shows agent-flow extras on the Create Assistant menu', async () => {
+    const user = userEvent.setup();
+    renderWithProviders(<AssistantListPanel {...defaultProps} />);
+
+    await user.click(screen.getByTestId('btn-create-assistant'));
+    expect(await screen.findByTestId('btn-create-assistant-agentflow-template')).toBeInTheDocument();
+    expect(screen.getByTestId('btn-create-assistant-agentflow-canvas')).toBeInTheDocument();
   });
 
   it('calls onCreate from the create-via-chat menu manual item (callback spy)', async () => {

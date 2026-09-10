@@ -1344,6 +1344,8 @@
   "talkToButler": {
     "createViaChat": "チャットで作成",
     "createManually": "手動で作成",
+    "fromAgentFlowTemplate": "エージェントフローテンプレートから",
+    "createAgentFlowOnCanvas": "キャンバスでエージェントフローを作成",
     "addViaChat": "チャットで追加",
     "addManually": "手動で追加",
     "solveViaChat": "チャットで解決",

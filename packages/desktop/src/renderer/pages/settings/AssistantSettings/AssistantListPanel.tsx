@@ -5,6 +5,7 @@
 import type { DragEndEvent } from '@dnd-kit/core';
 import { useLayoutContext } from '@/renderer/hooks/context/LayoutContext';
 import TalkToButlerButton from '@/renderer/components/base/TalkToButlerButton';
+import { useCreateAssistantExtras } from './useCreateAssistantExtras';
 import type { AssistantListItem } from './types';
 import { resolveAssistantSourceTag } from './assistantUtils';
 import AssistantAvatar from './AssistantAvatar';
@@ -222,6 +223,7 @@ const AssistantListPanel: React.FC<AssistantListPanelProps> = ({
   onHighlightConsumed,
 }) => {
   const { t } = useTranslation();
+  const { extraActions } = useCreateAssistantExtras();
   const layout = useLayoutContext();
   const isMobile = layout?.isMobile ?? false;
   const [highlightedId, setHighlightedId] = useState<string | null>(null);
@@ -370,6 +372,7 @@ const AssistantListPanel: React.FC<AssistantListPanelProps> = ({
                 chatLabel={t('settings.talkToButler.createViaChat', { defaultValue: 'Create via chat' })}
                 onManual={onCreate}
                 manualLabel={t('settings.talkToButler.createManually', { defaultValue: 'Create manually' })}
+                extraActions={extraActions}
                 prompt={t('settings.talkToButler.prompt.createAssistant', {
                   defaultValue: 'Help me create a new assistant and walk me through setting it up.',
                 })}

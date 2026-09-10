@@ -26,6 +26,12 @@ describe('MODEL_PLATFORMS ordering', () => {
     expect(DEFAULT_PLATFORM_VALUE).toBe('custom');
   });
 
+  it('pins PAIR (Projecto local) after the Moonshot pair', () => {
+    const values = MODEL_PLATFORMS.map((p) => p.value);
+    expect(values[3]).toBe('PAIR');
+    expect(MODEL_PLATFORMS.find((p) => p.value === 'PAIR')?.base_url).toBe('http://127.0.0.1:8787/v1');
+  });
+
   it('defines each Moonshot entry exactly once', () => {
     const moonshotEntries = MODEL_PLATFORMS.filter((p) => p.value.startsWith('Moonshot'));
     expect(moonshotEntries.map((p) => p.value)).toEqual(['Moonshot', 'Moonshot-Global']);

@@ -4,17 +4,20 @@
  * SPDX-License-Identifier: Apache-2.0
  *
  * Full-page OpenIdeas canvas: list every chatflow / agentflow, create either,
- * and optionally attach the selection to the active conversation.
+ * honor ?flowId= from history / Assistants, and optionally attach the selection
+ * to the active conversation.
  */
 
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Button, Message, Select, Tag } from '@arco-design/web-react';
 import { Export, Refresh, ShareOne } from '@icon-park/react';
 import { useTranslation } from 'react-i18next';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { ipcBridge } from '@/common';
 import type { TChatConversation } from '@/common/config/storage';
 import { useCurrentConversation } from '@renderer/pages/conversation/explorer/currentConversationStore';
 import { getConversationOrNull } from '@renderer/pages/conversation/utils/conversationCache';
+import { takeCanvasFlowId } from '@renderer/pages/conversation/Workflow/chatflowConversations';
 import {
   attachmentFromChatflow,
   readSessionWorkflow,
@@ -24,21 +27,45 @@ import {
   buildFlowiseEmbedUrl,
   createBlankAgentflow,
   createBlankChatflow,
+  isFlowiseFlowType,
+  isUsableFlowId,
   listChatflows,
   pingFlowise,
   resolveFlowiseUrl,
   type FlowiseChatflow,
+  type FlowiseFlowType,
 } from '@renderer/services/flowise';
 import { canvasNameForAssistant, flowOptionLabel, flowsForPicker } from './flowisePageModel';
 
+function flowIdFromLocation(search: string): string | undefined {
+  const id = new URLSearchParams(search).get('flowId');
+  return isUsableFlowId(id) ? id : undefined;
+}
+
+function flowTypeFromLocation(search: string): FlowiseFlowType | undefined {
+  const type = new URLSearchParams(search).get('type');
+  return isFlowiseFlowType(type) ? type : undefined;
+}
+
+function isAgentEditor(type: FlowiseFlowType | undefined): boolean {
+  return type === 'AGENTFLOW' || type === 'MULTIAGENT';
+}
+
 const FlowisePage: React.FC = () => {
   const { t } = useTranslation();
+  const location = useLocation();
+  const navigate = useNavigate();
   const conversationId = useCurrentConversation();
   const flowiseUrl = useMemo(() => resolveFlowiseUrl(), []);
   const [status, setStatus] = useState<'checking' | 'online' | 'offline'>('checking');
   const [conversation, setConversation] = useState<TChatConversation | null>(null);
   const [flows, setFlows] = useState<FlowiseChatflow[]>([]);
-  const [selectedId, setSelectedId] = useState<string | undefined>();
+  const [selectedId, setSelectedId] = useState<string | undefined>(
+    () => flowIdFromLocation(location.search) || takeCanvasFlowId()
+  );
+  const [queryFlowType, setQueryFlowType] = useState<FlowiseFlowType | undefined>(() =>
+    flowTypeFromLocation(location.search)
+  );
   const [busy, setBusy] = useState<'chatflow' | 'agentflow' | null>(null);
   const [frameEpoch, setFrameEpoch] = useState(0);
 
@@ -46,16 +73,19 @@ const FlowisePage: React.FC = () => {
   const assistantName = conversation?.assistant?.name || conversation?.name || '';
   const pickerFlows = useMemo(() => flowsForPicker(flows), [flows]);
   const selected = flows.find((flow) => flow.id === selectedId);
-  const resolvedFlowType = selected?.type || attachment?.flow_type;
+  const resolvedFlowType = selected?.type || queryFlowType || attachment?.flow_type;
+  const agentEditor = isAgentEditor(resolvedFlowType);
 
   const embedUrl = useMemo(
     () =>
-      buildFlowiseEmbedUrl({
-        baseUrl: flowiseUrl,
-        flowId: selectedId,
-        conversationId: conversation?.id,
-        flowType: resolvedFlowType,
-      }),
+      selectedId
+        ? buildFlowiseEmbedUrl({
+            baseUrl: flowiseUrl,
+            flowId: selectedId,
+            conversationId: conversation?.id,
+            flowType: resolvedFlowType,
+          })
+        : '',
     [flowiseUrl, selectedId, resolvedFlowType, conversation?.id]
   );
 
@@ -94,10 +124,11 @@ const FlowisePage: React.FC = () => {
     const nextConversation = conversationId ? await getConversationOrNull(conversationId) : null;
     setConversation(nextConversation);
     const nextAttachment = readSessionWorkflow(nextConversation?.extra);
+    const fromQuery = flowIdFromLocation(location.search);
+    const fromHistory = takeCanvasFlowId();
 
     if (!online) {
       setFlows([]);
-      setSelectedId(undefined);
       return;
     }
 
@@ -107,6 +138,8 @@ const FlowisePage: React.FC = () => {
       const pickable = flowsForPicker(nextFlows);
       setSelectedId((current) => {
         if (current && nextFlows.some((flow) => flow.id === current)) return current;
+        if (fromQuery && nextFlows.some((flow) => flow.id === fromQuery)) return fromQuery;
+        if (fromHistory && nextFlows.some((flow) => flow.id === fromHistory)) return fromHistory;
         if (nextAttachment?.flow_id && nextFlows.some((flow) => flow.id === nextAttachment.flow_id)) {
           return nextAttachment.flow_id;
         }
@@ -117,11 +150,25 @@ const FlowisePage: React.FC = () => {
       setSelectedId(undefined);
       Message.error(t('conversation.workflow.listFailed'));
     }
-  }, [conversationId, flowiseUrl, t]);
+  }, [conversationId, flowiseUrl, location.search, t]);
+
+  useEffect(() => {
+    const fromQuery = flowIdFromLocation(location.search);
+    if (fromQuery) setSelectedId(fromQuery);
+    setQueryFlowType(flowTypeFromLocation(location.search));
+  }, [location.search]);
 
   useEffect(() => {
     void refresh();
   }, [refresh]);
+
+  useEffect(() => {
+    if (status !== 'offline') return;
+    const timer = window.setInterval(() => {
+      void refresh();
+    }, 5000);
+    return () => window.clearInterval(timer);
+  }, [status, refresh]);
 
   // Persist flow_type when the full-page canvas resolves it from the flow list.
   useEffect(() => {
@@ -146,11 +193,13 @@ const FlowisePage: React.FC = () => {
       const flow = flows.find((item) => item.id === flowId);
       if (!flow) return;
       setSelectedId(flow.id);
+      const typeQuery = flow.type && isAgentEditor(flow.type) ? `&type=${encodeURIComponent(flow.type)}` : '';
+      void navigate(`/canvas?flowId=${encodeURIComponent(flow.id)}${typeQuery}`, { replace: true });
       if (conversation) {
         void persistAttachment(attachmentFromChatflow(flow, flowiseUrl));
       }
     },
-    [attachment?.base_url, attachment?.open_by_default, conversation, flows, flowiseUrl, persistAttachment]
+    [attachment?.base_url, attachment?.open_by_default, conversation, flows, flowiseUrl, navigate, persistAttachment]
   );
 
   const onCreate = useCallback(
@@ -163,6 +212,9 @@ const FlowisePage: React.FC = () => {
             : await createBlankAgentflow(flowiseUrl, canvasNameForAssistant(assistantName, 'AGENTFLOW'));
         setFlows((current) => [created, ...current.filter((flow) => flow.id !== created.id)]);
         setSelectedId(created.id);
+        const nextType = created.type && isFlowiseFlowType(created.type) ? created.type : kind === 'agentflow' ? 'AGENTFLOW' : 'CHATFLOW';
+        const typeQuery = isAgentEditor(nextType) ? `&type=${encodeURIComponent(nextType)}` : '';
+        void navigate(`/canvas?flowId=${encodeURIComponent(created.id)}${typeQuery}`, { replace: true });
         if (conversation) {
           await persistAttachment(attachmentFromChatflow(created, flowiseUrl));
         }
@@ -172,7 +224,7 @@ const FlowisePage: React.FC = () => {
         setBusy(null);
       }
     },
-    [assistantName, conversation, flowiseUrl, persistAttachment, t]
+    [assistantName, conversation, flowiseUrl, navigate, persistAttachment, t]
   );
 
   const onReloadFrame = useCallback(() => {
@@ -189,7 +241,9 @@ const FlowisePage: React.FC = () => {
       <header className='h-48px shrink-0 flex items-center justify-between gap-12px px-16px border-b border-3'>
         <div className='flex items-center gap-8px min-w-0'>
           <ShareOne theme='outline' size='18' fill='currentColor' />
-          <strong className='text-14px text-t-primary'>{t('conversation.workflow.canvas')}</strong>
+          <strong className='text-14px text-t-primary'>
+            {agentEditor ? t('conversation.workflow.agentflowCanvas') : t('conversation.workflow.canvas')}
+          </strong>
           <Tag color={status === 'online' ? 'green' : status === 'offline' ? 'red' : 'gray'} size='small'>
             {status === 'online'
               ? t('conversation.workflow.statusOnline')
@@ -260,7 +314,7 @@ const FlowisePage: React.FC = () => {
           </Button>
         </div>
       </header>
-      {selectedId && status === 'online' ? (
+      {selectedId && embedUrl && status === 'online' ? (
         <iframe
           key={`${selectedId}:${resolvedFlowType ?? 'unknown'}:${frameEpoch}`}
           className='flex-1 min-h-0 w-full border-0 bg-1'
@@ -272,7 +326,11 @@ const FlowisePage: React.FC = () => {
       ) : (
         <div className='flex-1 min-h-0 flex items-center justify-center px-24px' data-testid='flowise-empty'>
           <div className='max-w-420px text-center text-13px text-t-secondary leading-22px'>
-            {status === 'offline' ? t('conversation.workflow.openIdeasOffline') : t('conversation.workflow.emptyCanvasHint')}
+            {status === 'offline'
+              ? t('conversation.workflow.openIdeasOffline')
+              : agentEditor
+                ? t('conversation.workflow.emptyAgentflowHint')
+                : t('conversation.workflow.emptyCanvasHint')}
             {status === 'online' ? (
               <div className='mt-16px flex items-center justify-center gap-8px'>
                 <Button size='small' loading={busy === 'chatflow'} onClick={() => void onCreate('chatflow')}>

@@ -91,6 +91,13 @@ export const MODEL_PLATFORMS: PlatformConfig[] = [
     platform: 'custom',
     base_url: 'https://api.moonshot.ai/v1',
   },
+  {
+    name: 'PAIR (Projecto local)',
+    value: 'PAIR',
+    logo: null,
+    platform: 'custom',
+    base_url: 'http://127.0.0.1:8787/v1',
+  },
 
   // New API 多模型网关 / New API multi-model gateway
   {

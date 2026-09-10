@@ -54,3 +54,17 @@ export function attachmentFromChatflow(flow: FlowiseChatflow, baseUrl?: string):
     open_by_default: true,
   };
 }
+
+/**
+ * PATCH payload for session_workflow only. Spreading conversation.extra
+ * re-sends extra.skills / MCP snapshots and aioncore rejects that with 400.
+ */
+export function sessionWorkflowPatch(next: SessionWorkflowAttachment | null): {
+  extra: { session_workflow?: SessionWorkflowAttachment };
+  merge_extra: true;
+} {
+  return {
+    extra: next ? { session_workflow: next } : {},
+    merge_extra: true,
+  };
+}

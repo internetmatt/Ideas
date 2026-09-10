@@ -1270,6 +1270,8 @@
   "talkToButler": {
     "createViaChat": "Створити через чат",
     "createManually": "Створити вручну",
+    "fromAgentFlowTemplate": "З шаблону agent flow",
+    "createAgentFlowOnCanvas": "Створити agent flow на полотні",
     "addViaChat": "Додати через чат",
     "addManually": "Додати вручну",
     "solveViaChat": "Вирішити через чат",

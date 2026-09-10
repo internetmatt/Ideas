@@ -785,6 +785,10 @@
   },
   "workflow": {
     "canvas": "キャンバス",
+    "overlay": "キャンバスチャット",
+    "toggleOverlay": "キャンバスチャットをこの会話に重ねる",
+    "expandOverlay": "オーバーレイを拡大",
+    "collapseOverlay": "オーバーレイを縮小",
     "sessionCanvas": "セッションキャンバス",
     "toggle": "セッションワークフローを切り替え",
     "reload": "再読み込み",

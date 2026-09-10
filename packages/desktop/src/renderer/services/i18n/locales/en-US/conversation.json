@@ -655,7 +655,8 @@
     "newDirFailed": "Couldn't create folder",
     "tabs": {
       "files": "Files",
-      "changes": "Changes"
+      "changes": "Changes",
+      "canvas": "Canvas"
     },
     "addedToChat": "Added {{name}} to chat",
     "imported": "Imported {{count}} file(s)",
@@ -785,6 +786,10 @@
   },
   "workflow": {
     "canvas": "Canvas",
+    "overlay": "Canvas chat",
+    "toggleOverlay": "Overlay canvas chat on this conversation",
+    "expandOverlay": "Expand overlay",
+    "collapseOverlay": "Collapse overlay",
     "sessionCanvas": "Session canvas",
     "toggle": "Toggle session workflow canvas",
     "reload": "Reload",
@@ -798,8 +803,10 @@
     "untitledChatflow": "Untitled Chatflow",
     "untitledAgentflow": "Untitled Agent",
     "openIdeasOffline": "OpenIdeas is offline on this host.",
+    "agentflowCanvas": "Agentflow canvas",
     "emptySessionHint": "Pick an existing chatflow or agentflow, or create a new one for this session.",
     "emptyCanvasHint": "Pick a chatflow or agentflow from the list, or create a new one.",
+    "emptyAgentflowHint": "Create an agentflow to edit, or open one from Assistants.",
     "predictFailed": "OpenIdeas could not answer this message.",
     "listFailed": "Could not load OpenIdeas flows.",
     "createFailed": "Could not create that OpenIdeas flow."

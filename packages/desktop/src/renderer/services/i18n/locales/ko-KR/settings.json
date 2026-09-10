@@ -1344,6 +1344,8 @@
   "talkToButler": {
     "createViaChat": "대화로 만들기",
     "createManually": "수동으로 만들기",
+    "fromAgentFlowTemplate": "에이전트 플로우 템플릿에서",
+    "createAgentFlowOnCanvas": "캔버스에서 에이전트 플로우 만들기",
     "addViaChat": "대화로 추가",
     "addManually": "수동으로 추가",
     "solveViaChat": "대화로 해결",

@@ -18,6 +18,7 @@ import type { FeedbackModuleTag } from '@/common/types/feedbackDiagnostics';
  */
 const ROUTE_MODULE_MAP: ReadonlyArray<readonly [prefix: string, tag: FeedbackModuleTag]> = [
   ['/conversation', 'conversation-session'],
+  ['/canvas', 'conversation-session'],
   ['/flowise', 'conversation-session'],
   ['/team', 'agent-team'],
   ['/scheduled', 'scheduled-task'],
@@ -29,7 +30,7 @@ const ROUTE_MODULE_MAP: ReadonlyArray<readonly [prefix: string, tag: FeedbackMod
   ['/settings/appearance', 'display-desktop'],
   ['/settings/pet', 'display-desktop'],
   ['/settings/webui', 'webui-remote'],
-  // Same Flowise surface as /flowise, reached from settings.
+  ['/settings/canvas', 'conversation-session'],
   ['/settings/flowise', 'conversation-session'],
   // Extension-contributed settings tabs are channel plugins (Telegram/Slack/
   // Feishu…) today, so route their reports to the channel module.

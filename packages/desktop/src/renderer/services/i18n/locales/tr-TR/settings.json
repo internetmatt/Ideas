@@ -1342,6 +1342,8 @@
   "talkToButler": {
     "createViaChat": "Sohbetle oluştur",
     "createManually": "Elle oluştur",
+    "fromAgentFlowTemplate": "Agent flow şablonundan",
+    "createAgentFlowOnCanvas": "Canvas üzerinde agent flow oluştur",
     "addViaChat": "Sohbetle ekle",
     "addManually": "Elle ekle",
     "solveViaChat": "Sohbetle çöz",

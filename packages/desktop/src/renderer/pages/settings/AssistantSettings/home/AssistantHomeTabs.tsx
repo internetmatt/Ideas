@@ -8,10 +8,12 @@ import type { AssistantListItem } from '../types';
 import EnabledAssistantsList from './EnabledAssistantsList';
 import MyAssistantsList from './MyAssistantsList';
 import OfficialAssistantsGrid from './OfficialAssistantsGrid';
+import OpenIdeasAgentflowsSection from '../OpenIdeasAgentflowsSection';
 import { useLayoutContext } from '@/renderer/hooks/context/LayoutContext';
 import TalkToButlerButton from '@/renderer/components/base/TalkToButlerButton';
 import { AionSearchInput } from '@/renderer/components/base';
 import SettingsPageHeader from '../../components/SettingsPageHeader';
+import { useCreateAssistantExtras } from '../useCreateAssistantExtras';
 import React, { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
@@ -28,12 +30,12 @@ type AssistantHomeTabsProps = {
   onReorderEnabled: (activeId: string, overId: string) => void | Promise<void>;
   onStartChat: (assistant: AssistantListItem) => void;
   /** Tab to show on mount (e.g. return to Official after editing a builtin). */
-  initialTab?: 'enabled' | 'mine' | 'official';
+  initialTab?: 'enabled' | 'mine' | 'official' | 'agentflows';
   /** Notified whenever the active tab changes, so the parent can remember it. */
-  onTabChange?: (tab: 'enabled' | 'mine' | 'official') => void;
+  onTabChange?: (tab: 'enabled' | 'mine' | 'official' | 'agentflows') => void;
 };
 
-type HomeTab = 'enabled' | 'mine' | 'official';
+type HomeTab = 'enabled' | 'mine' | 'official' | 'agentflows';
 
 const AssistantHomeTabs: React.FC<AssistantHomeTabsProps> = ({
   assistants,
@@ -51,6 +53,7 @@ const AssistantHomeTabs: React.FC<AssistantHomeTabsProps> = ({
   onTabChange,
 }) => {
   const { t, i18n } = useTranslation();
+  const { extraActions } = useCreateAssistantExtras();
   const layout = useLayoutContext();
   const isMobile = layout?.isMobile ?? false;
   const [tab, setTab] = useState<HomeTab>(initialTab);
@@ -124,6 +127,7 @@ const AssistantHomeTabs: React.FC<AssistantHomeTabsProps> = ({
                   chatLabel={t('settings.talkToButler.createViaChat', { defaultValue: 'Create via chat' })}
                   onManual={onCreate}
                   manualLabel={t('settings.talkToButler.createManually', { defaultValue: 'Create manually' })}
+                  extraActions={extraActions}
                   prompt={t('settings.talkToButler.prompt.createAssistant', {
                     defaultValue: 'Help me create a new assistant and walk me through setting it up.',
                   })}
@@ -146,6 +150,10 @@ const AssistantHomeTabs: React.FC<AssistantHomeTabsProps> = ({
                 key: 'official',
                 label: t('settings.assistantTabOfficial', { defaultValue: 'Official' }),
                 count: counts.official,
+              },
+              {
+                key: 'agentflows',
+                label: t('settings.assistantTabAgentflows'),
               },
             ]}
             activeTab={tab}
@@ -181,6 +189,8 @@ const AssistantHomeTabs: React.FC<AssistantHomeTabsProps> = ({
               onGoOfficial={() => selectTab('official')}
               searchActive={Boolean(normalizedSearchQuery)}
             />
+          ) : tab === 'agentflows' ? (
+            <OpenIdeasAgentflowsSection />
           ) : (
             <OfficialAssistantsGrid
               assistants={filteredAssistants}

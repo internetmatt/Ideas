@@ -785,6 +785,10 @@
   },
   "workflow": {
     "canvas": "畫布",
+    "overlay": "畫布對話",
+    "toggleOverlay": "將畫布對話疊在目前會話上",
+    "expandOverlay": "展開疊層",
+    "collapseOverlay": "收起疊層",
     "sessionCanvas": "會話畫布",
     "toggle": "開啟/關閉會話工作流畫布",
     "reload": "重新載入",
