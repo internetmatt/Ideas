@@ -251,6 +251,34 @@ export function forwardToFlowiseIsland(
     const chunks: Buffer[] = [];
     proxyRes.on('data', (chunk) => chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk)));
     proxyRes.on('end', () => {
+/**
+ * Flowise pins `frame-ancestors` to whatever `IFRAME_ORIGINS` names on the
+ * engine container (the fleet lists :3011 and :4715). The island is framed by
+ * exactly one thing — the Ideas host that mounts it, which is same-origin by
+ * construction — so any other host port (the :3012 multi-instance, a DMG
+ * install on a free port) renders an empty frame with no visible error.
+ *
+ * Widen the directive with `'self'` on the proxied copy only. The engine's
+ * own policy on :3010 is untouched; a policy without `frame-ancestors`, or one
+ * that already allows `'self'` / `*`, passes through unchanged.
+ */
+export function widenFrameAncestorsForIsland(csp: string | string[] | undefined): string | string[] | undefined {
+  if (Array.isArray(csp)) return csp.map((value) => widenFrameAncestorsForIsland(value) as string);
+  if (typeof csp !== 'string' || !/frame-ancestors/i.test(csp)) return csp;
+  return csp
+    .split(';')
+    .map((directive) => {
+      const trimmed = directive.trim();
+      if (!/^frame-ancestors\b/i.test(trimmed)) return directive;
+      const sources = trimmed.split(/\s+/).slice(1);
+      if (sources.some((source) => source === "'self'" || source === '*')) return directive;
+      const kept = sources.filter((source) => source !== "'none'");
+      const lead = directive.slice(0, directive.length - directive.trimStart().length);
+      return `${lead}frame-ancestors ${["'self'", ...kept].join(' ')}`;
+    })
+    .join(';');
+}
+
       const body = rewriteFlowiseIslandPayload(Buffer.concat(chunks).toString('utf8'), contentType, upstreamPath);
       const headersOut = { ...proxyRes.headers };
       delete headersOut['content-length'];
@@ -272,4 +300,8 @@ export function forwardToFlowiseIsland(
     }
   });
   req.pipe(proxy);
+    const csp = proxyRes.headers['content-security-policy'];
+    if (csp !== undefined) {
+      proxyRes.headers['content-security-policy'] = widenFrameAncestorsForIsland(csp);
+    }
 }

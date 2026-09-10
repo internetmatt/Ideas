@@ -8,6 +8,7 @@ import {
   rewriteFlowiseIslandPayload,
   rewriteIslandLocation,
 } from './canvas-island.js';
+  widenFrameAncestorsForIsland,
 
 describe('islandUpstreamHeaders', () => {
   it('marks OpenIdeas island fetches as internal so the canvas is not 401', () => {
@@ -19,6 +20,37 @@ describe('islandUpstreamHeaders', () => {
 });
 
 describe('rewriteFlowiseIslandPayload', () => {
+describe('widenFrameAncestorsForIsland', () => {
+  const fleetPolicy = 'frame-ancestors http://127.0.0.1:3011 http://localhost:3011 http://127.0.0.1:4715 http://localhost:4715';
+
+  it("adds 'self' so the island frames on any Ideas host port, keeping the fleet origins", () => {
+    expect(widenFrameAncestorsForIsland(fleetPolicy)).toBe(
+      "frame-ancestors 'self' http://127.0.0.1:3011 http://localhost:3011 http://127.0.0.1:4715 http://localhost:4715"
+    );
+  });
+
+  it("leaves policies that already allow 'self' or * alone", () => {
+    expect(widenFrameAncestorsForIsland("frame-ancestors 'self'")).toBe("frame-ancestors 'self'");
+    expect(widenFrameAncestorsForIsland('frame-ancestors *')).toBe('frame-ancestors *');
+  });
+
+  it("replaces 'none' rather than producing an invalid source list", () => {
+    expect(widenFrameAncestorsForIsland("frame-ancestors 'none'")).toBe("frame-ancestors 'self'");
+  });
+
+  it('only touches the frame-ancestors directive and passes other headers through', () => {
+    expect(widenFrameAncestorsForIsland("default-src 'self'; frame-ancestors http://localhost:3011; img-src *")).toBe(
+      "default-src 'self'; frame-ancestors 'self' http://localhost:3011; img-src *"
+    );
+    expect(widenFrameAncestorsForIsland("default-src 'self'")).toBe("default-src 'self'");
+    expect(widenFrameAncestorsForIsland(undefined)).toBeUndefined();
+    expect(widenFrameAncestorsForIsland([fleetPolicy, "frame-ancestors 'self'"])).toEqual([
+      "frame-ancestors 'self' http://127.0.0.1:3011 http://localhost:3011 http://127.0.0.1:4715 http://localhost:4715",
+      "frame-ancestors 'self'",
+    ]);
+  });
+});
+
   it('rewrites root-absolute assets on the island HTML', () => {
     const html = rewriteFlowiseIslandPayload(
       '<html><head><title>Flowise - Build AI Agents, Visually</title></head><body><script src="/assets/index.js"></script></body></html>',
