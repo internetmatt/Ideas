@@ -92,7 +92,7 @@ jobs:
     with:
       matrix: ${{ needs.prepare-matrix.outputs.matrix }}
       ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || inputs.branch }}
-      skip_code_quality: ${{ github.event_name == 'workflow_dispatch' && inputs.skip_code_quality || false }}
+      skip_code_quality: ${{ github.event_name == 'pull_request' || inputs.skip_code_quality }}
       aioncore_run_id: ${{ github.event_name == 'workflow_dispatch' && inputs.aioncore_run_id || '' }}
       append_commit_hash: true
       upload_installers_only: true
