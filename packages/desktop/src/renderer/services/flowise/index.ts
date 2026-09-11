@@ -34,6 +34,7 @@ export {
   deleteTool,
   FlowiseClientError,
   getChatflow,
+  importChatflowJson,
   isFlowiseFlowType,
   listApiKeys,
   listChatflows,
@@ -71,6 +72,16 @@ export {
   isCanvasSettingsPage,
   type CanvasSettingsPage,
 } from './canvasSettings';
+export { syncOpenIdeasIslandTheme, withOpenIdeasThemeParam, type OpenIdeasAppearance } from './openIdeasTheme';
+export {
+  DEFAULT_OPENIDEAS_PAGE,
+  OPENIDEAS_SETTINGS_PAGES,
+  OPENIDEAS_SIDER_PAGES,
+  isOpenIdeasSettingsPage,
+  openIdeasSettingsPath,
+  parseOpenIdeasSettingsPage,
+  type OpenIdeasSettingsPage,
+} from './openIdeasPages';
 export {
   CUSTOM_MCP_AUTH_TYPES,
   CUSTOM_MCP_SERVER_STATUSES,

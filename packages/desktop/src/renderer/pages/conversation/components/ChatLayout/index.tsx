@@ -86,10 +86,10 @@ const ChatLayout: React.FC<{
   // overlay path, exactly how non-project conversations still render today.
   const previewHosted = Boolean(props.previewHosted) && !isMobile;
   const workflowOpen = Boolean(props.workflowOpen) && Boolean(props.workflowPanel);
-  // Session workflow always renders in ChatLayout's split slot.
-  // File preview still hoists to the Layout host for project conversations.
-  const showWorkflowPanel = workflowOpen;
-  const showPreviewPanel = isPreviewOpenRaw && !previewHosted && !workflowOpen;
+  // Project conversations host the session canvas in the workspace Files /
+  // Changes / Canvas tabs. Only non-project chats still use this middle split.
+  const showWorkflowPanel = workflowOpen && !previewHosted;
+  const showPreviewPanel = isPreviewOpenRaw && !previewHosted && !showWorkflowPanel;
   const isPreviewOpen = showWorkflowPanel || showPreviewPanel;
   // 最大化（仅桌面）：隐藏聊天区、让内联预览铺满；工作区右栏保持不变。
   // 项目会话的预览被提升到 Layout host（previewHosted），其最大化在 Layout 处理，

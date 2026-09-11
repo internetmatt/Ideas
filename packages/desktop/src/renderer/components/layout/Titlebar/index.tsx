@@ -1,17 +1,9 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import classNames from 'classnames';
-import {
-  ArrowCircleLeft,
-  ArrowLeft,
-  ArrowRight,
-  ExpandLeft,
-  ExpandRight,
-  Peoples,
-  Search,
-  SettingTwo,
-} from '@icon-park/react';
+import { ArrowCircleLeft, ArrowLeft, ArrowRight, ExpandLeft, ExpandRight, Peoples, Search } from '@icon-park/react';
 import { useTranslation } from 'react-i18next';
 import { useLocation, useNavigate } from 'react-router-dom';
+import OpenIdeasGearMenu from '@/renderer/components/settings/OpenIdeasGearMenu';
 
 import { ipcBridge } from '@/common';
 import { PRODUCT_NAME } from '@/common/branding';
@@ -154,7 +146,6 @@ const Titlebar: React.FC<TitlebarProps> = ({ workspaceAvailable }) => {
   const feedbackTooltip = t('conversation.welcome.quickActionFeedback', { defaultValue: 'Report Issue' });
   const isSettingsRoute = location.pathname.startsWith('/settings');
   const iconSize = 18;
-  const flowiseTooltip = t('settings.flowise.titlebarTooltip', { defaultValue: 'Canvas settings' });
   // Desktop uses slimmer strokes to match macOS-native chrome aesthetics;
   // mobile keeps the default weight so icons stay legible at larger sizes.
   const desktopIconStroke = layout?.isMobile ? undefined : 2.5;
@@ -422,16 +413,12 @@ const Titlebar: React.FC<TitlebarProps> = ({ workspaceAvailable }) => {
       <div ref={toolbarRef} className='app-titlebar__toolbar'>
         {layout?.isMobile && <div id='app-titlebar-actions-slot' className='app-titlebar__actions-slot' />}
         {IS_DISCONTINUED_BUILD && <MigrationInviteCapsule />}
-        <button
-          type='button'
+        <OpenIdeasGearMenu
+          titlebar
           className={classNames('app-titlebar__button', layout?.isMobile && 'app-titlebar__button--mobile')}
-          onClick={() => void navigate('/settings/canvas')}
-          aria-label={flowiseTooltip}
-          title={flowiseTooltip}
-          data-testid='titlebar-flowise-gear'
-        >
-          <SettingTwo theme='outline' size={iconSize} fill='currentColor' strokeWidth={desktopIconStroke} />
-        </button>
+          iconSize={iconSize}
+          iconStrokeWidth={desktopIconStroke}
+        />
         <button
           type='button'
           className={classNames('app-titlebar__button', layout?.isMobile && 'app-titlebar__button--mobile')}

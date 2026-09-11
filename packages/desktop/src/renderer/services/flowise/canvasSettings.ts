@@ -33,6 +33,6 @@ export function canvasSettingsNavigateTo(page?: string): string {
   if (page && page in LIFTED_CANVAS_SETTINGS_PAGES) {
     return LIFTED_CANVAS_SETTINGS_PAGES[page as keyof typeof LIFTED_CANVAS_SETTINGS_PAGES];
   }
-  if (isCanvasSettingsPage(page)) return `/settings/canvas/${page}`;
-  return '/settings/canvas';
+  if (isCanvasSettingsPage(page)) return `/settings/openideas/${page}`;
+  return '/settings/openideas/credentials';
 }

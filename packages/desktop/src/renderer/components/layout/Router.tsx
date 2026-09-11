@@ -122,10 +122,12 @@ const PanelRoute: React.FC<{ layout: React.ReactElement }> = ({ layout }) => {
           <Route path='/settings/canvas/document-stores' element={<Navigate to='/settings/document-stores' replace />} />
           <Route path='/settings/canvas/marketplaces' element={<Navigate to='/settings/marketplaces' replace />} />
           <Route path='/settings/canvas/account' element={<Navigate to='/settings/openideas-account' replace />} />
-          <Route path='/settings/canvas' element={withRouteFallback(FlowiseSettings)} />
-          <Route path='/settings/canvas/:page' element={withRouteFallback(FlowiseSettings)} />
-          <Route path='/settings/flowise' element={<FlowiseSettingsRedirect />} />
+          <Route path='/settings/canvas/:page' element={<FlowiseSettingsRedirect />} />
+          <Route path='/settings/canvas' element={<FlowiseSettingsRedirect />} />
+          <Route path='/settings/openideas/:page' element={withRouteFallback(FlowiseSettings)} />
+          <Route path='/settings/openideas' element={<Navigate to='/settings/openideas/chatflows' replace />} />
           <Route path='/settings/flowise/:page' element={<FlowiseSettingsRedirect />} />
+          <Route path='/settings/flowise' element={<FlowiseSettingsRedirect />} />
           <Route path='/settings/pet' element={withRouteFallback(PetSettings)} />
           <Route path='/settings/archived' element={withRouteFallback(ArchivedSettings)} />
           <Route path='/settings/system' element={withRouteFallback(SystemSettings)} />

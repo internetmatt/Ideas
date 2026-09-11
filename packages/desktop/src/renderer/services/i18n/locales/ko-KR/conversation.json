@@ -655,7 +655,8 @@
     "newDirFailed": "폴더를 만들지 못했습니다",
     "tabs": {
       "files": "파일",
-      "changes": "변경"
+      "changes": "변경",
+      "canvas": "캔버스"
     },
     "addedToChat": "{{name}}을(를) 채팅에 추가했습니다",
     "imported": "{{count}}개 파일을 가져왔습니다",

@@ -15,6 +15,9 @@ vi.mock('react-i18next', () => ({
   useTranslation: () => ({ t: (k: string) => k }),
 }));
 vi.mock('@/renderer/pages/conversation/Preview', () => ({ usePreviewContext: () => ({ openPreview: () => {} }) }));
+vi.mock('@/renderer/pages/conversation/Workflow/SessionCanvasTab', () => ({
+  default: () => <div data-testid='session-canvas-tab'>canvas-tab</div>,
+}));
 
 // Isolate the container from the real WS runtime.
 const initExplorerRuntime = vi.fn(() => ({}));
@@ -30,6 +33,7 @@ vi.mock('@/common', () => ({
 
 import { ExplorerContainer } from '@/renderer/pages/conversation/explorer/ExplorerContainer';
 import { resetExplorerStoreForTest } from '@/renderer/pages/conversation/explorer/explorerStore';
+import { resetWorkspacePanelTabForTest } from '@/renderer/pages/conversation/explorer/workspacePanelTabStore';
 
 const entry = (over: Partial<ProjectEntryDto>): ProjectEntryDto => ({
   pe_id: 'peA',
@@ -60,6 +64,7 @@ const renderContainer = (projectId: string) =>
 
 beforeEach(() => {
   resetExplorerStoreForTest();
+  resetWorkspacePanelTabForTest();
   initExplorerRuntime.mockClear();
   projectGet.mockReset();
   try {
@@ -152,6 +157,20 @@ describe('ExplorerContainer data integration', () => {
     // Switching back unmounts the SCM panel and keeps the tree.
     fireEvent.click(screen.getByText('conversation.explorer.tabs.files'));
     expect(screen.queryByText('conversation.explorer.scm.loadFailed')).not.toBeInTheDocument();
+    expect(screen.getByText('Root Alpha')).toBeInTheDocument();
+  });
+
+  it('switches to the Canvas tab without unmounting the explorer', async () => {
+    projectGet.mockResolvedValue(detail([entry({ pe_id: 'peA', display_name: 'Root Alpha' })]));
+    renderContainer('p1');
+    expect(await screen.findByText('Root Alpha')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByTestId('workspace-tab-canvas'));
+    expect(screen.getByTestId('session-canvas-tab')).toBeInTheDocument();
+    expect(screen.getByText('Root Alpha')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByTestId('workspace-tab-files'));
+    expect(screen.queryByTestId('session-canvas-tab')).not.toBeInTheDocument();
     expect(screen.getByText('Root Alpha')).toBeInTheDocument();
   });
 

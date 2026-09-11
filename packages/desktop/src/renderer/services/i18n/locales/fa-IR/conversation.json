@@ -655,7 +655,8 @@
     "newDirFailed": "ایجاد پوشه ناموفق بود",
     "tabs": {
       "files": "پرونده‌ها",
-      "changes": "تغییرات"
+      "changes": "تغییرات",
+      "canvas": "بوم"
     },
     "addedToChat": "{{name}} به گفتگو افزوده شد",
     "imported": "{{count}} فایل وارد شد",

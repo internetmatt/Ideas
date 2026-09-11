@@ -663,7 +663,8 @@
     "newDirFailed": "Не вдалося створити папку",
     "tabs": {
       "files": "Файли",
-      "changes": "Зміни"
+      "changes": "Зміни",
+      "canvas": "Полотно"
     },
     "addedToChat": "{{name}} додано в чат",
     "imported": "Імпортовано файлів: {{count}}",

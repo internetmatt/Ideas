@@ -655,7 +655,8 @@
     "newDirFailed": "建立資料夾失敗",
     "tabs": {
       "files": "檔案",
-      "changes": "變更"
+      "changes": "變更",
+      "canvas": "畫布"
     },
     "addedToChat": "已將 {{name}} 加入對話",
     "imported": "已匯入 {{count}} 個檔案",

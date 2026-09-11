@@ -655,7 +655,8 @@
     "newDirFailed": "Échec de la création du dossier",
     "tabs": {
       "files": "Fichiers",
-      "changes": "Modifications"
+      "changes": "Modifications",
+      "canvas": "Canevas"
     },
     "addedToChat": "{{name}} ajouté au chat",
     "imported": "{{count}} fichier(s) importé(s)",
