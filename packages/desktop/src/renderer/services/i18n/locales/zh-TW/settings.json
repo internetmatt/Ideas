@@ -1344,6 +1344,8 @@
   "talkToButler": {
     "createViaChat": "透過對話建立",
     "createManually": "手動建立",
+    "fromAgentFlowTemplate": "從智能體流程範本建立",
+    "createAgentFlowOnCanvas": "在畫布上建立智能體流程",
     "addViaChat": "透過對話新增",
     "addManually": "手動新增",
     "solveViaChat": "透過對話排查",

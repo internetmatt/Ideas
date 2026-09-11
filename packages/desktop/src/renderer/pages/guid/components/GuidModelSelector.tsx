@@ -24,6 +24,7 @@ import {
   type RuntimeSelectorModelGroup,
   RuntimeSelectorSubMenuTitle,
 } from '@/renderer/components/agent/runtimeSelectorOptions';
+import { resolveDefaultModelButtonLabel } from '@/renderer/services/systemModelRuntime';
 
 type GuidModelSelectorProps = {
   // Gemini model state
@@ -56,7 +57,7 @@ const GuidModelSelector: React.FC<GuidModelSelectorProps> = ({
 }) => {
   const { t } = useTranslation();
   const navigate = useNavigate();
-  const defaultModelLabel = t('common.defaultModel');
+  const defaultModelLabel = resolveDefaultModelButtonLabel(t('common.defaultModel'));
 
   // 过滤掉被禁用的 provider
   const enabledModelList = React.useMemo(() => {

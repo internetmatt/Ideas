@@ -55,6 +55,7 @@
     "newTask": "新建任務",
     "createViaChat": "透過對話建立",
     "createManually": "手動建立",
+    "fromScheduledTemplate": "從 OpenIdeas 排程範本建立",
     "description": "按計畫自動執行任務。你也可以在任意對話中直接讓 AionUi 幫你建立一個定時任務。",
     "awakeBanner": "定時任務僅在電腦喚醒狀態下運行。",
     "keepAwake": "保持喚醒",

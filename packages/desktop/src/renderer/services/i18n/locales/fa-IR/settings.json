@@ -1342,6 +1342,8 @@
   "talkToButler": {
     "createViaChat": "ایجاد از طریق چت",
     "createManually": "ایجاد دستی",
+    "fromAgentFlowTemplate": "از قالب agent flow",
+    "createAgentFlowOnCanvas": "ایجاد agent flow روی بوم",
     "addViaChat": "افزودن از طریق چت",
     "addManually": "افزودن دستی",
     "solveViaChat": "حل از طریق چت",

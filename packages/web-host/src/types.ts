@@ -51,5 +51,12 @@ export type WebHostHandle = {
   localUrl: string;
   networkUrl?: string;
   lanIP?: string;
+  /** Present when OpenIdeas ensure ran during boot. */
+  openIdeas?: {
+    ok: boolean;
+    origin: { hostname: string; port: number };
+    healed: boolean;
+    detail: string;
+  };
   stop: () => Promise<void>;
 };

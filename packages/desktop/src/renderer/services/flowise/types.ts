@@ -28,3 +28,87 @@ export const EMPTY_FLOW_DATA = JSON.stringify({
 });
 
 export const DEFAULT_FLOWISE_WORKSPACE_ID = 'General';
+
+export const DEFAULT_CUSTOM_TOOL_COLOR = '#6366F1';
+
+export type FlowiseTool = {
+  id: string;
+  name: string;
+  description: string;
+  color: string;
+  iconSrc?: string;
+  schema?: string;
+  func?: string;
+  workspaceId: string;
+  createdDate?: string;
+  updatedDate?: string;
+};
+
+export const CUSTOM_MCP_SERVER_STATUSES = ['PENDING', 'AUTHORIZED', 'ERROR'] as const;
+export type CustomMcpServerStatus = (typeof CUSTOM_MCP_SERVER_STATUSES)[number];
+
+export const CUSTOM_MCP_AUTH_TYPES = ['NONE', 'CUSTOM_HEADERS'] as const;
+export type CustomMcpAuthType = (typeof CUSTOM_MCP_AUTH_TYPES)[number];
+
+export type FlowiseCustomMcpServer = {
+  id: string;
+  name: string;
+  serverUrl: string;
+  iconSrc?: string;
+  color?: string;
+  authType: CustomMcpAuthType;
+  tools?: string;
+  toolCount: number;
+  status: CustomMcpServerStatus;
+  workspaceId: string;
+  createdDate?: string;
+  updatedDate?: string;
+};
+
+export type FlowiseCustomMcpTool = {
+  name: string;
+  description?: string;
+};
+
+export const DEFAULT_API_KEY_PERMISSIONS = ['chatflows:view'] as const;
+
+export type FlowiseApiKey = {
+  id: string;
+  keyName: string;
+  apiKey: string;
+  apiSecret?: string;
+  permissions: string[];
+  workspaceId: string;
+  updatedDate?: string;
+};
+
+export type FlowiseDocumentStore = {
+  id: string;
+  name: string;
+  description: string;
+  status?: string;
+  workspaceId: string;
+  totalChunks?: number;
+  totalChars?: number;
+  updatedDate?: string;
+  createdDate?: string;
+};
+
+export const MARKETPLACE_TEMPLATE_KINDS = ['CHATFLOW', 'AGENTFLOW', 'TOOL'] as const;
+export type MarketplaceTemplateKind = (typeof MARKETPLACE_TEMPLATE_KINDS)[number];
+
+export type FlowiseMarketplaceTemplate = {
+  id: string;
+  templateName: string;
+  type: string;
+  kind: MarketplaceTemplateKind;
+  description: string;
+  flowData?: string;
+  badge?: string;
+  framework?: string[];
+  usecases?: string[];
+  categories?: string[];
+  schema?: string;
+  func?: string;
+  custom?: boolean;
+};

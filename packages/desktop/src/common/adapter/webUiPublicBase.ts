@@ -122,6 +122,13 @@ export function resolveIdeasHostShellUrl(
     attachFlag === 'true' ||
     attachFlag === 'on' ||
     (options.isPackaged === true && (attachFlag === undefined || attachFlag === ''));
+ * Packaged Ideas.app / `AIONUI_ATTACH_HOST=1` loads the Projecto Ideas plane
+ * instead of a second local aioncore. Explicit `AIONUI_START_URL` wins.
+ */
+export function resolveIdeasHostShellUrl(env: ProcessEnv = typeof process === 'undefined' ? {} : process.env): string | null {
+  const explicit = env.AIONUI_START_URL?.trim();
+  if (explicit) return explicit;
+  const attach = env.AIONUI_ATTACH_HOST === '1' || env.AIONUI_ATTACH_HOST === 'true';
   if (!attach) return null;
   const origin = (env.PROJECTO_PUBLIC_ORIGIN || env.PROJECTO_BACKEND_URL || DEFAULT_IDEAS_HOST_ORIGIN).replace(
     /\/$/,

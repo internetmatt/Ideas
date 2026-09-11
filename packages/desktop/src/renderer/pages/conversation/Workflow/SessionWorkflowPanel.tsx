@@ -3,8 +3,9 @@
  * Copyright 2025 AionUi (aionui.com)
  * SPDX-License-Identifier: Apache-2.0
  *
- * Session-scoped Flowise canvas panel — pick or create chatflows / agentflows
- * and bind them to the active conversation.
+ * Session-scoped OpenIdeas canvas panel — pick or create chatflows / agentflows
+ * and bind them to the active conversation. Host-tab chrome can hide the
+ * duplicate header because Files/Changes/Canvas tabs own that.
  */
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -15,6 +16,7 @@ import {
   buildFlowiseEmbedUrl,
   createBlankAgentflow,
   createBlankChatflow,
+  isUsableFlowId,
   listChatflows,
   pingFlowise,
   resolveFlowiseUrl,
@@ -26,12 +28,22 @@ import { attachmentFromChatflow, type SessionWorkflowAttachment } from './sessio
 
 type Props = {
   conversationId: string;
+  conversationName?: string;
   attachment: SessionWorkflowAttachment | null;
-  onClose: () => void;
+  onClose?: () => void;
   onAttach?: (next: SessionWorkflowAttachment | null) => void;
+  /** Host tab: no duplicate "Session canvas" chrome — the Files/Changes/Canvas tabs own that. */
+  variant?: 'split' | 'host';
 };
 
-const SessionWorkflowPanel: React.FC<Props> = ({ conversationId, attachment, onClose, onAttach }) => {
+const SessionWorkflowPanel: React.FC<Props> = ({
+  conversationId,
+  conversationName,
+  attachment,
+  onClose,
+  onAttach,
+  variant = 'split',
+}) => {
   const { t } = useTranslation();
   const [status, setStatus] = useState<'checking' | 'online' | 'offline'>('checking');
   const [flows, setFlows] = useState<FlowiseChatflow[]>([]);
@@ -40,6 +52,7 @@ const SessionWorkflowPanel: React.FC<Props> = ({ conversationId, attachment, onC
   const skipAutoSelectRef = useRef(false);
   const baseUrl = useMemo(() => resolveFlowiseUrl(attachment?.base_url), [attachment?.base_url]);
   const pickerFlows = useMemo(() => flowsForPicker(flows), [flows]);
+  const flowId = isUsableFlowId(attachment?.flow_id) ? attachment.flow_id : undefined;
 
   const resolvedFlowType = useMemo<FlowiseFlowType | undefined>(() => {
     if (attachment?.flow_type) return attachment.flow_type;
@@ -49,13 +62,15 @@ const SessionWorkflowPanel: React.FC<Props> = ({ conversationId, attachment, onC
 
   const embedUrl = useMemo(
     () =>
-      buildFlowiseEmbedUrl({
-        baseUrl,
-        flowId: attachment?.flow_id,
-        conversationId,
-        flowType: resolvedFlowType,
-      }),
-    [baseUrl, attachment?.flow_id, resolvedFlowType, conversationId]
+      flowId
+        ? buildFlowiseEmbedUrl({
+            baseUrl,
+            flowId,
+            conversationId,
+            flowType: resolvedFlowType,
+          })
+        : '',
+    [baseUrl, flowId, resolvedFlowType, conversationId]
   );
 
   const refreshFlows = useCallback(async () => {
@@ -76,6 +91,14 @@ const SessionWorkflowPanel: React.FC<Props> = ({ conversationId, attachment, onC
   useEffect(() => {
     void refreshFlows();
   }, [refreshFlows]);
+
+  useEffect(() => {
+    if (status !== 'offline') return;
+    const timer = window.setInterval(() => {
+      void refreshFlows();
+    }, 5000);
+    return () => window.clearInterval(timer);
+  }, [status, refreshFlows]);
 
   const attach = useCallback(
     (flow: FlowiseChatflow) => {
@@ -108,8 +131,8 @@ const SessionWorkflowPanel: React.FC<Props> = ({ conversationId, attachment, onC
       try {
         const created =
           kind === 'chatflow'
-            ? await createBlankChatflow(baseUrl, t('conversation.workflow.untitledChatflow'))
-            : await createBlankAgentflow(baseUrl, t('conversation.workflow.untitledAgentflow'));
+            ? await createBlankChatflow(baseUrl, conversationName?.trim() || t('conversation.workflow.untitledChatflow'))
+            : await createBlankAgentflow(baseUrl, conversationName?.trim() || t('conversation.workflow.untitledAgentflow'));
         setFlows((current) => [created, ...current.filter((flow) => flow.id !== created.id)]);
         attach(created);
       } catch {
@@ -118,7 +141,7 @@ const SessionWorkflowPanel: React.FC<Props> = ({ conversationId, attachment, onC
         setBusy(null);
       }
     },
-    [attach, baseUrl, onAttach, t]
+    [attach, baseUrl, conversationName, onAttach, t]
   );
 
   const onClearFlow = useCallback(() => {
@@ -142,97 +165,101 @@ const SessionWorkflowPanel: React.FC<Props> = ({ conversationId, attachment, onC
 
   return (
     <section className='size-full min-h-0 flex flex-col bg-1' data-testid='session-workflow-panel'>
-      <header className='h-44px shrink-0 flex items-center justify-between gap-8px px-12px border-b border-3'>
-        <div className='flex items-center gap-8px min-w-0'>
-          <ShareOne theme='outline' size='16' fill='currentColor' />
-          <strong className='text-13px text-t-primary truncate'>{t('conversation.workflow.sessionCanvas')}</strong>
-          <Tag color={status === 'online' ? 'green' : status === 'offline' ? 'red' : 'gray'} size='small'>
-            {status === 'online'
-              ? t('conversation.workflow.statusOnline')
-              : status === 'offline'
-                ? t('conversation.workflow.statusOffline')
-                : t('conversation.workflow.statusChecking')}
-          </Tag>
-          {onAttach ? (
-            <Select
-              size='mini'
-              className='w-220px'
-              placeholder={t('conversation.workflow.selectFlow')}
-              value={attachment?.flow_id}
-              showSearch
-              allowClear
-              onChange={(value) => {
-                if (value == null || value === '') {
-                  onClearFlow();
-                  return;
-                }
-                const flow = flows.find((item) => item.id === String(value));
-                if (flow) attach(flow);
-              }}
-              data-testid='session-workflow-flow-select'
-            >
-              {pickerFlows.map((flow) => (
-                <Select.Option key={flow.id} value={flow.id}>
-                  {flowOptionLabel(flow)}
-                </Select.Option>
-              ))}
-            </Select>
-          ) : null}
-        </div>
-        <div className='flex items-center gap-4px shrink-0'>
-          {attachment?.flow_id ? (
-            <>
-              <Button
+      {variant === 'split' ? (
+        <header className='h-44px shrink-0 flex items-center justify-between gap-8px px-12px border-b border-3'>
+          <div className='flex items-center gap-8px min-w-0'>
+            <ShareOne theme='outline' size='16' fill='currentColor' />
+            <strong className='text-13px text-t-primary truncate'>{t('conversation.workflow.sessionCanvas')}</strong>
+            <Tag color={status === 'online' ? 'green' : status === 'offline' ? 'red' : 'gray'} size='small'>
+              {status === 'online'
+                ? t('conversation.workflow.statusOnline')
+                : status === 'offline'
+                  ? t('conversation.workflow.statusOffline')
+                  : t('conversation.workflow.statusChecking')}
+            </Tag>
+            {onAttach ? (
+              <Select
                 size='mini'
-                type='text'
-                icon={<Refresh />}
-                onClick={onReloadFrame}
-                aria-label={t('conversation.workflow.reload')}
-                data-testid='session-workflow-reload'
+                className='w-220px'
+                placeholder={t('conversation.workflow.selectFlow')}
+                value={attachment?.flow_id}
+                showSearch
+                allowClear
+                onChange={(value) => {
+                  if (value == null || value === '') {
+                    onClearFlow();
+                    return;
+                  }
+                  const flow = flows.find((item) => item.id === String(value));
+                  if (flow) attach(flow);
+                }}
+                data-testid='session-workflow-flow-select'
               >
-                {t('conversation.workflow.reload')}
-              </Button>
-              <Button
-                size='mini'
-                type='text'
-                icon={<Export />}
-                onClick={onOpenDirect}
-                aria-label={t('conversation.workflow.openDirect')}
-                data-testid='session-workflow-open-direct'
-              >
-                {t('conversation.workflow.openDirect')}
-              </Button>
-            </>
-          ) : null}
-          {onAttach && status === 'online' ? (
-            <>
-              <Button
-                size='mini'
-                loading={busy === 'chatflow'}
-                disabled={busy !== null}
-                onClick={() => void onCreate('chatflow')}
-                data-testid='session-workflow-new-chatflow'
-              >
-                {t('conversation.workflow.newChatflow')}
-              </Button>
-              <Button
-                size='mini'
-                type='primary'
-                loading={busy === 'agentflow'}
-                disabled={busy !== null}
-                onClick={() => void onCreate('agentflow')}
-                data-testid='session-workflow-new-agentflow'
-              >
-                {t('conversation.workflow.newAgentflow')}
-              </Button>
-            </>
-          ) : null}
-          <Button size='mini' type='text' icon={<Close />} onClick={onClose} aria-label={t('common.close')} />
-        </div>
-      </header>
-      {attachment?.flow_id ? (
+                {pickerFlows.map((flow) => (
+                  <Select.Option key={flow.id} value={flow.id}>
+                    {flowOptionLabel(flow)}
+                  </Select.Option>
+                ))}
+              </Select>
+            ) : null}
+          </div>
+          <div className='flex items-center gap-4px shrink-0'>
+            {attachment?.flow_id ? (
+              <>
+                <Button
+                  size='mini'
+                  type='text'
+                  icon={<Refresh />}
+                  onClick={onReloadFrame}
+                  aria-label={t('conversation.workflow.reload')}
+                  data-testid='session-workflow-reload'
+                >
+                  {t('conversation.workflow.reload')}
+                </Button>
+                <Button
+                  size='mini'
+                  type='text'
+                  icon={<Export />}
+                  onClick={onOpenDirect}
+                  aria-label={t('conversation.workflow.openDirect')}
+                  data-testid='session-workflow-open-direct'
+                >
+                  {t('conversation.workflow.openDirect')}
+                </Button>
+              </>
+            ) : null}
+            {onAttach && status === 'online' ? (
+              <>
+                <Button
+                  size='mini'
+                  loading={busy === 'chatflow'}
+                  disabled={busy !== null}
+                  onClick={() => void onCreate('chatflow')}
+                  data-testid='session-workflow-new-chatflow'
+                >
+                  {t('conversation.workflow.newChatflow')}
+                </Button>
+                <Button
+                  size='mini'
+                  type='primary'
+                  loading={busy === 'agentflow'}
+                  disabled={busy !== null}
+                  onClick={() => void onCreate('agentflow')}
+                  data-testid='session-workflow-new-agentflow'
+                >
+                  {t('conversation.workflow.newAgentflow')}
+                </Button>
+              </>
+            ) : null}
+            {onClose ? (
+              <Button size='mini' type='text' icon={<Close />} onClick={onClose} aria-label={t('common.close')} />
+            ) : null}
+          </div>
+        </header>
+      ) : null}
+      {flowId && embedUrl && status === 'online' ? (
         <iframe
-          key={`${attachment.flow_id}:${resolvedFlowType ?? 'unknown'}:${frameEpoch}`}
+          key={`${flowId}:${resolvedFlowType ?? 'unknown'}:${frameEpoch}`}
           className='flex-1 min-h-0 w-full border-0 bg-1'
           title={t('conversation.workflow.sessionCanvas')}
           src={embedUrl}
@@ -248,7 +275,7 @@ const SessionWorkflowPanel: React.FC<Props> = ({ conversationId, attachment, onC
             {status === 'offline'
               ? t('conversation.workflow.openIdeasOffline')
               : t('conversation.workflow.emptySessionHint')}
-            {status === 'online' && onAttach ? (
+            {status === 'online' && onAttach && !flowId ? (
               <div className='mt-16px flex items-center justify-center gap-8px'>
                 <Button size='small' loading={busy === 'chatflow'} onClick={() => void onCreate('chatflow')}>
                   {t('conversation.workflow.newChatflow')}

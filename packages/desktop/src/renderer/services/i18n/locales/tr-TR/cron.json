@@ -67,6 +67,7 @@
     "newTask": "Yeni görev",
     "createViaChat": "Sohbetle oluştur",
     "createManually": "Manuel oluştur",
+    "fromScheduledTemplate": "OpenIdeas zamanlanmış şablondan",
     "description": "Görevleri bir zamanlamayla çalıştırın. Ayrıca herhangi bir konuşmada AionUi'den sizin için bir görev oluşturmasını isteyebilirsiniz.",
     "awakeBanner": "Zamanlanmış görevler yalnızca bilgisayarınız açıkken çalışır.",
     "keepAwake": "Uyanık tut",

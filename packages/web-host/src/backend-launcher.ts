@@ -9,7 +9,7 @@
  */
 
 import { type ChildProcess, spawn } from 'node:child_process';
-import { mkdirSync, statSync } from 'node:fs';
+import { mkdirSync, readFileSync, statSync } from 'node:fs';
 import { connect, createServer, type Socket } from 'node:net';
 import { cleanupRegisteredAgentProcesses } from './agent-process-registry.js';
 import type { AppMetadata, BackendBinaryResolver } from './types.js';
@@ -251,7 +251,11 @@ const AIONCORE_LISTENING_PREFIX = 'AIONCORE_LISTENING ';
 // signal — matched by exact whole-line equality. The port is already known from
 // the earlier AIONCORE_LISTENING line, so this marker carries no payload.
 const AIONCORE_READY_MARKER = 'AIONCORE_READY';
-const BACKEND_PORT_REPORT_TIMEOUT_MS = 60_000;
+function backendPortReportTimeoutMs(): number {
+  const raw = Number(process.env.AIONUI_BACKEND_PORT_TIMEOUT_MS);
+  return Number.isFinite(raw) && raw >= 5_000 ? raw : 60_000;
+}
+const BACKEND_PORT_REPORT_TIMEOUT_MS = backendPortReportTimeoutMs();
 
 // Benign boundary code emitted by an aioncore instance that yielded the
 // data-dir instance guard to a peer that already owns it (Sentry 135525166).
@@ -385,15 +389,51 @@ function isAioncoreReadyLine(line: string): boolean {
 }
 
 function parseAioncoreListeningPort(line: string): number | undefined {
-  if (!line.startsWith(AIONCORE_LISTENING_PREFIX)) return undefined;
+  const fromPrefix = (raw: string): number | undefined => {
+    try {
+      const parsed = JSON.parse(raw) as { port?: unknown };
+      if (typeof parsed.port !== 'number' || !Number.isInteger(parsed.port)) return undefined;
+      if (parsed.port <= 0 || parsed.port > 65535) return undefined;
+      return parsed.port;
+    } catch {
+      return undefined;
+    }
+  };
+  if (line.startsWith(AIONCORE_LISTENING_PREFIX)) {
+    return fromPrefix(line.slice(AIONCORE_LISTENING_PREFIX.length));
+  }
+  const match = line.match(/Server listening on (?:\d{1,3}\.){3}\d{1,3}:(\d{1,5})/);
+  if (!match) return undefined;
+  const port = Number(match[1]);
+  if (!Number.isInteger(port) || port <= 0 || port > 65535) return undefined;
+  return port;
+}
+
+function latestListeningPortInLogDir(logDir: string, startedAt: number): number | undefined {
   try {
-    const parsed = JSON.parse(line.slice(AIONCORE_LISTENING_PREFIX.length)) as { port?: unknown };
-    if (typeof parsed.port !== 'number' || !Number.isInteger(parsed.port)) return undefined;
-    if (parsed.port <= 0 || parsed.port > 65535) return undefined;
-    return parsed.port;
+    const day = new Date();
+    const stamp = `${day.getFullYear()}-${String(day.getMonth() + 1).padStart(2, '0')}-${String(day.getDate()).padStart(2, '0')}`;
+    const file = `${logDir}/${day.getFullYear()}/${stamp.slice(5, 7)}/${stamp}.aioncore.log`;
+    const text = readFileSync(file, 'utf8');
+    const lines = text.split('\n').slice(-80);
+    for (let i = lines.length - 1; i >= 0; i--) {
+      const line = lines[i];
+      if (!line) continue;
+      try {
+        const row = JSON.parse(line) as { timestamp?: string; fields?: { message?: string } };
+        const ts = row.timestamp ? Date.parse(row.timestamp) : 0;
+        if (ts && ts + 2000 < startedAt) continue;
+        const port = parseAioncoreListeningPort(row.fields?.message || line);
+        if (port) return port;
+      } catch {
+        const port = parseAioncoreListeningPort(line);
+        if (port) return port;
+      }
+    }
   } catch {
     return undefined;
   }
+  return undefined;
 }
 
 function getResolveDiagnostics(error: unknown): Partial<BackendStartupErrorDetails> | undefined {
@@ -778,6 +818,7 @@ export class BackendLifecycleManager {
 
     let reportedPortSettled = false;
     let reportedPortTimer: ReturnType<typeof setTimeout> | undefined;
+    let logPoll: ReturnType<typeof setInterval> | undefined;
     let resolveReportedPort: (port: number) => void = () => {};
     let rejectReportedPort: (error: BackendStartupError) => void = () => {};
     const reportedPort = new Promise<number>((resolve, reject) => {
@@ -785,11 +826,13 @@ export class BackendLifecycleManager {
         if (reportedPortSettled) return;
         reportedPortSettled = true;
         if (reportedPortTimer) clearTimeout(reportedPortTimer);
+        if (logPoll) clearInterval(logPoll);
         resolve(port);
       };
       rejectReportedPort = (error) => {
         if (reportedPortSettled) return;
         reportedPortSettled = true;
+        if (logPoll) clearInterval(logPoll);
         reject(error);
       };
       reportedPortTimer = setTimeout(() => {
@@ -801,6 +844,16 @@ export class BackendLifecycleManager {
         );
       }, BACKEND_PORT_REPORT_TIMEOUT_MS);
     });
+    logPoll = setInterval(() => {
+      if (!logDir || reportedPortSettled) return;
+      const port = latestListeningPortInLogDir(logDir, startupStartedAt);
+      if (port === undefined) return;
+      this._port = port;
+      serverListeningObserved = true;
+      serverListeningObservedAfterMs = Date.now() - startupStartedAt;
+      serverListeningLine = `log Server listening on 127.0.0.1:${port}`;
+      resolveReportedPort(port);
+    }, 500);
 
     this.childProcess.stdout?.on('data', (data: Buffer) => {
       stdoutTail = appendOutputTail(stdoutTail, data);
@@ -834,7 +887,16 @@ export class BackendLifecycleManager {
     this.childProcess.stderr?.on('data', (data: Buffer) => {
       stderrTail = appendOutputTail(stderrTail, data);
       for (const line of data.toString().split('\n')) {
-        if (line.trim()) console.error(`[aioncore] ${line}`);
+        const trimmed = line.trim();
+        const port = parseAioncoreListeningPort(trimmed);
+        if (port !== undefined) {
+          this._port = port;
+          serverListeningObserved = true;
+          serverListeningObservedAfterMs = Date.now() - startupStartedAt;
+          serverListeningLine = trimmed;
+          resolveReportedPort(port);
+        }
+        if (trimmed) console.error(`[aioncore] ${line}`);
       }
     });
 

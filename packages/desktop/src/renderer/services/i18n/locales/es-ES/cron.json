@@ -133,6 +133,7 @@
     },
     "createViaChat": "Create via chat",
     "createManually": "Create manually",
+    "fromScheduledTemplate": "From OpenIdeas scheduled template",
     "custom": {
       "modeLabel": "Patrón de repetición",
       "interval": "Cada intervalo",

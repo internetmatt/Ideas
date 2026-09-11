@@ -13,6 +13,12 @@ import { mergeCookieHeaders, resolveFlowiseServiceCookie } from './flowiseSessio
 
 export const CANVAS_ISLAND_MOUNT = '/canvas-island';
 
+/** Hide Flowise's own app chrome — Ideas already has nav and files. Keep ChatPopUp so the canvas chat can overlay the node editor. */
+export const ISLAND_SHELL_CSS = `<style data-ideas-island-shell>
+.MuiDrawer-root,header.MuiAppBar-root,.MuiAppBar-root{display:none!important}
+main{margin:0!important;margin-top:0!important;margin-left:0!important;width:100%!important;padding:0!important;min-height:100vh}
+</style>`;
+
 /** Flowise UI paths. Ideas uses HashRouter, so these are never Ideas routes. */
 const FLOWISE_SPA_PREFIXES = [
   '/v2',
@@ -124,6 +130,21 @@ export function isFlowiseApiStolenByIdeas(url: string, referer: string | undefin
   }
 }
 
+/**
+ * Vite preloads that still resolve to Ideas `/assets/*` (missed rewrite, stale
+ * tab) must not hit the SPA fallback — SW then returns Response.error().
+ */
+export function isFlowiseAssetStolenByIdeas(url: string, referer: string | undefined): boolean {
+  const path = url.split('?')[0].split('#')[0];
+  if (!path.startsWith('/assets/')) return false;
+  if (!referer) return false;
+  try {
+    return new URL(referer).pathname.startsWith(CANVAS_ISLAND_MOUNT);
+  } catch {
+    return referer.includes(CANVAS_ISLAND_MOUNT);
+  }
+}
+
 export function shouldRewriteIslandBody(contentType: string, requestPath: string): boolean {
   const ct = contentType.toLowerCase();
   return (
@@ -169,6 +190,12 @@ export function rewriteFlowiseIslandPayload(content: string, contentType: string
     );
     out = out.replaceAll('"/assets/', `"${mount}/assets/`);
     out = out.replaceAll("'/assets/", `'${mount}/assets/`);
+    // Vite `__vite__mapDeps` emits relative `"assets/foo-hash.js"` and the
+    // preload helper does `return "/"+e` → `/assets/...` on the Ideas origin
+    // (SPA HTML + SW type-guard → net::ERR_FAILED). Prefix without a leading
+    // slash so `"/"+dep` becomes `/canvas-island/assets/...`.
+    out = out.replaceAll('"assets/', `"${mount.slice(1)}/assets/`);
+    out = out.replaceAll("'assets/", `'${mount.slice(1)}/assets/`);
     for (const route of [
       '/v2/agentcanvas',
       '/agentcanvas',
@@ -190,6 +217,9 @@ export function rewriteFlowiseIslandPayload(content: string, contentType: string
       out = out.replace(/<head([^>]*)>/i, `<head$1><base href="${mount}/">`);
     }
     out = out.replace(/<title>[^<]*<\/title>/i, '<title>OpenIdeas</title>');
+    if (!out.includes('data-ideas-island-shell')) {
+      out = out.replace(/<head([^>]*)>/i, `<head$1>${ISLAND_SHELL_CSS}`);
+    }
   }
   return out;
 }
@@ -255,6 +285,34 @@ export function islandUpstreamHeaders(
   };
 }
 
+/**
+ * Flowise pins `frame-ancestors` to whatever `IFRAME_ORIGINS` names on the
+ * engine container (the fleet lists :3011 and :4715). The island is framed by
+ * exactly one thing — the Ideas host that mounts it, which is same-origin by
+ * construction — so any other host port (the :3012 multi-instance, a DMG
+ * install on a free port) renders an empty frame with no visible error.
+ *
+ * Widen the directive with `'self'` on the proxied copy only. The engine's
+ * own policy on :3010 is untouched; a policy without `frame-ancestors`, or one
+ * that already allows `'self'` / `*`, passes through unchanged.
+ */
+export function widenFrameAncestorsForIsland(csp: string | string[] | undefined): string | string[] | undefined {
+  if (Array.isArray(csp)) return csp.map((value) => widenFrameAncestorsForIsland(value) as string);
+  if (typeof csp !== 'string' || !/frame-ancestors/i.test(csp)) return csp;
+  return csp
+    .split(';')
+    .map((directive) => {
+      const trimmed = directive.trim();
+      if (!/^frame-ancestors\b/i.test(trimmed)) return directive;
+      const sources = trimmed.split(/\s+/).slice(1);
+      if (sources.some((source) => source === "'self'" || source === '*')) return directive;
+      const kept = sources.filter((source) => source !== "'none'");
+      const lead = directive.slice(0, directive.length - directive.trimStart().length);
+      return `${lead}frame-ancestors ${["'self'", ...kept].join(' ')}`;
+    })
+    .join(';');
+}
+
 export function forwardToFlowiseIsland(
   req: IncomingMessage,
   res: ServerResponse,
@@ -276,6 +334,10 @@ export function forwardToFlowiseIsland(
       const location = proxyRes.headers.location;
       if (typeof location === 'string') {
         proxyRes.headers.location = rewriteIslandLocation(location, origin);
+      }
+      const csp = proxyRes.headers['content-security-policy'];
+      if (csp !== undefined) {
+        proxyRes.headers['content-security-policy'] = widenFrameAncestorsForIsland(csp);
       }
       if (!shouldRewriteIslandBody(contentType, upstreamPath)) {
         res.writeHead(proxyRes.statusCode ?? 502, sanitizeIslandResponseHeaders(proxyRes.headers));
