@@ -102,6 +102,26 @@ function joinOriginAndHome(origin: string, home: string): string {
 }
 
 /**
+ * Packaged Ideas.app loads the Projecto Ideas plane (login + canvas island)
+ * instead of a second local aioncore. Dev builds keep the local renderer unless
+ * `AIONUI_ATTACH_HOST=1`. Explicit `AIONUI_START_URL` wins. Set
+ * `AIONUI_ATTACH_HOST=0` to force a packaged app onto its bundled renderer.
+ */
+export function resolveIdeasHostShellUrl(
+  env: ProcessEnv = typeof process === 'undefined' ? {} : process.env,
+  options: { isPackaged?: boolean } = {},
+): string | null {
+  const explicit = env.AIONUI_START_URL?.trim();
+  if (explicit) return explicit;
+  const attachFlag = env.AIONUI_ATTACH_HOST?.trim().toLowerCase();
+  if (attachFlag === '0' || attachFlag === 'false' || attachFlag === 'off') {
+    return null;
+  }
+  const attach =
+    attachFlag === '1' ||
+    attachFlag === 'true' ||
+    attachFlag === 'on' ||
+    (options.isPackaged === true && (attachFlag === undefined || attachFlag === ''));
  * Packaged Ideas.app / `AIONUI_ATTACH_HOST=1` loads the Projecto Ideas plane
  * instead of a second local aioncore. Explicit `AIONUI_START_URL` wins.
  */

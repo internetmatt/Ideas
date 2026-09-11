@@ -576,6 +576,7 @@ const createWindow = ({ showOnReady = true }: { showOnReady?: boolean } = {}): v
   }
 
   // Load the renderer: host :4715 shell, Vite URL in development, or built HTML.
+  const hostShellUrl = resolveIdeasHostShellUrl(process.env, { isPackaged: app.isPackaged });
   const hostShellUrl = resolveIdeasHostShellUrl();
   const rendererUrl = process.env['ELECTRON_RENDERER_URL'];
   const fallbackFile = path.join(__dirname, '../renderer/index.html');
@@ -813,6 +814,7 @@ const handleAppReady = async (): Promise<void> => {
   }
 
   const debugBackendStartupFailure = resolveDebugBackendStartupFailure();
+  const hostShellUrl = resolveIdeasHostShellUrl(process.env, { isPackaged: app.isPackaged });
   const hostShellUrl = resolveIdeasHostShellUrl();
   if (hostShellUrl) {
     console.log(`[AionUi] Host shell attach — skipping local aioncore (${hostShellUrl})`);
