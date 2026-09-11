@@ -22,7 +22,7 @@ WebUI mode starts AionUi with an embedded web server, allowing you to:
 - Use AionUi from remote devices on the same network (with `--remote` flag)
 - Run the application headless on servers
 
-Default access URL: `http://localhost:3011` (Ideas fork; Flowise is `3010`, Projecto shell-router is `3000`)
+Default access URL: `http://localhost:3011` (Ideas fork; OpenIdeas canvas is `3010`, Projecto shell-router is `3000`)
 
 ---
 
