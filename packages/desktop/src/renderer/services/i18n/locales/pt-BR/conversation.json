@@ -661,7 +661,8 @@
     "newDirFailed": "Não foi possível criar a pasta",
     "tabs": {
       "files": "Arquivos",
-      "changes": "Alterações"
+      "changes": "Alterações",
+      "canvas": "Tela"
     },
     "addedToChat": "{{name}} adicionado ao chat",
     "imported": "{{count}} arquivo(s) importado(s)",

@@ -106,11 +106,35 @@ export function getBuiltinSettingsNavItems(isDesktop: boolean, t: TranslateFn): 
       icon: isDesktop ? <Earth theme='outline' size='16' /> : <Communication theme='outline' size='16' />,
       path: 'webui',
     },
-    flowise: {
-      id: 'flowise',
-      label: t('settings.flowise'),
+    'openideas-chatflows': {
+      id: 'openideas-chatflows',
+      label: t('settings.flowise.page.chatflows'),
       icon: <ShareOne theme='outline' size='16' />,
-      path: 'canvas',
+      path: 'openideas/chatflows',
+    },
+    'openideas-agentflows': {
+      id: 'openideas-agentflows',
+      label: t('settings.flowise.page.agentflows'),
+      icon: <ShareOne theme='outline' size='16' />,
+      path: 'openideas/agentflows',
+    },
+    'openideas-assistants': {
+      id: 'openideas-assistants',
+      label: t('settings.flowise.page.assistants'),
+      icon: <ShareOne theme='outline' size='16' />,
+      path: 'openideas/assistants',
+    },
+    'openideas-executions': {
+      id: 'openideas-executions',
+      label: t('settings.flowise.page.executions'),
+      icon: <ShareOne theme='outline' size='16' />,
+      path: 'openideas/executions',
+    },
+    'openideas-credentials': {
+      id: 'openideas-credentials',
+      label: t('settings.flowise.page.credentials'),
+      icon: <ShareOne theme='outline' size='16' />,
+      path: 'openideas/credentials',
     },
     pet: { id: 'pet', label: t('pet.desktopPet'), icon: <Cat theme='outline' size='16' />, path: 'pet' },
     system: { id: 'system', label: t('settings.system'), icon: <System theme='outline' size='16' />, path: 'system' },
@@ -227,7 +251,8 @@ const SettingsPageWrapper: React.FC<SettingsPageWrapperProps> = ({ children, cla
           {isMobile && (
             <div className='settings-mobile-top-nav'>
               {menuItems.map((item) => {
-                const active = pathname.includes(`/settings/${item.path}`);
+                const settingsPath = `/settings/${item.path}`;
+                const active = pathname === settingsPath || pathname.startsWith(`${settingsPath}/`);
                 return (
                   <button
                     key={item.path}

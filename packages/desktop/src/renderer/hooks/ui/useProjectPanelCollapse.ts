@@ -29,6 +29,7 @@ import { useEffect, useRef, useState } from 'react';
 
 import {
   WORKSPACE_ENSURE_EXPANDED_EVENT,
+  WORKSPACE_ENSURE_OPEN_EVENT,
   WORKSPACE_TOGGLE_EVENT,
   dispatchWorkspaceStateEvent,
 } from '@/renderer/utils/workspace/workspaceEvents';
@@ -98,8 +99,24 @@ export function useProjectPanelCollapse({
         }
       }
     };
+    const handleEnsureOpen = (event: Event) => {
+      if (!active || !projectId || !collapsedRef.current) return;
+      event.preventDefault();
+      setCollapsed(false);
+      if (!isMobile) {
+        try {
+          localStorage.setItem(collapseKey(projectId), 'expanded');
+        } catch {
+          // ignore persistence errors
+        }
+      }
+    };
     window.addEventListener(WORKSPACE_TOGGLE_EVENT, handleToggle);
-    return () => window.removeEventListener(WORKSPACE_TOGGLE_EVENT, handleToggle);
+    window.addEventListener(WORKSPACE_ENSURE_OPEN_EVENT, handleEnsureOpen);
+    return () => {
+      window.removeEventListener(WORKSPACE_TOGGLE_EVENT, handleToggle);
+      window.removeEventListener(WORKSPACE_ENSURE_OPEN_EVENT, handleEnsureOpen);
+    };
   }, [active, projectId, isMobile]);
 
   useEffect(() => {

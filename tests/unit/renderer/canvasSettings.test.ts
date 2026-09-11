@@ -35,7 +35,7 @@ describe('canvas settings pages', () => {
     expect(canvasSettingsNavigateTo('document-stores')).toBe('/settings/document-stores');
     expect(canvasSettingsNavigateTo('marketplaces')).toBe('/settings/marketplaces');
     expect(canvasSettingsNavigateTo('account')).toBe('/settings/openideas-account');
-    expect(canvasSettingsNavigateTo('credentials')).toBe('/settings/canvas/credentials');
-    expect(canvasSettingsNavigateTo()).toBe('/settings/canvas');
+    expect(canvasSettingsNavigateTo('credentials')).toBe('/settings/openideas/credentials');
+    expect(canvasSettingsNavigateTo()).toBe('/settings/openideas/credentials');
   });
 });

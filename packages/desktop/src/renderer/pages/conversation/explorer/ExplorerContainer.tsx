@@ -41,6 +41,7 @@ import type { ChatFileRef } from '@/common/types/chatFile';
 import type { FileOrFolderItem } from '@/renderer/utils/file/fileTypes';
 import { resolvePreviewPayload } from '@/renderer/utils/file/previewPayload';
 
+import SessionCanvasTab from '../Workflow/SessionCanvasTab';
 import { ExplorerPanel } from './ExplorerPanel';
 import {
   buildCreateFileRequest,
@@ -63,9 +64,6 @@ import { SearchPanel } from './search/SearchPanel';
 import type { SearchHit } from './search/searchModel';
 import { ScmPanel } from '../SourceControl/ScmPanel';
 import { rediscoverRepos, refreshAllRepos } from '../SourceControl/scmStore';
-import SessionWorkflowPanel from '../Workflow/SessionWorkflowPanel';
-import { readSessionWorkflow, sessionWorkflowPatch } from '../Workflow/sessionWorkflow';
-import { getConversationOrNull } from '../utils/conversationCache';
 import { setExplorerHostTab, useExplorerHostTab, type ExplorerHostTab } from './explorerHostTab';
 
 export type ExplorerContainerProps = {
@@ -182,10 +180,6 @@ export const ExplorerContainer: React.FC<ExplorerContainerProps> = ({ projectId 
   const { openPreview } = usePreviewContext();
   const activeConversationId = useCurrentConversation();
   const activeTab = useExplorerHostTab();
-  const { data: activeConversation, mutate: mutateConversation } = useSWR(
-    activeConversationId ? `conversation/${activeConversationId}` : null,
-    () => (activeConversationId ? getConversationOrNull(activeConversationId) : null)
-  );
   const {
     data,
     isLoading,
@@ -513,7 +507,7 @@ export const ExplorerContainer: React.FC<ExplorerContainerProps> = ({ projectId 
     try {
       if (activeTab === 'changes') {
         await Promise.all([rediscoverRepos(), refreshAllRepos()]);
-      } else {
+      } else if (activeTab === 'files') {
         await Promise.all([mutateProject(), ...roots.map((root) => refreshRoot(root.pe_id))]);
       }
     } finally {
@@ -527,6 +521,7 @@ export const ExplorerContainer: React.FC<ExplorerContainerProps> = ({ projectId 
       size='small'
       className={`flex-shrink-0 !px-8px ${activeTab === key ? '!text-t-primary !font-medium !bg-2' : '!text-t-secondary'}`}
       onClick={() => setExplorerHostTab(key)}
+      data-testid={`workspace-tab-${key}`}
     >
       {label}
     </Button>
@@ -555,7 +550,7 @@ export const ExplorerContainer: React.FC<ExplorerContainerProps> = ({ projectId 
         <div className='flex items-center gap-2px overflow-x-auto flex-1 min-w-0'>
           {tabButton('files', t('conversation.explorer.tabs.files'))}
           {tabButton('changes', t('conversation.explorer.tabs.changes'))}
-          {tabButton('canvas', t('conversation.workflow.canvas'))}
+          {tabButton('canvas', t('conversation.explorer.tabs.canvas'))}
         </div>
         <div className='flex items-center gap-2px flex-shrink-0'>
           {/* Right cluster order (VS Code parity): project-scope actions first (add
@@ -662,25 +657,9 @@ export const ExplorerContainer: React.FC<ExplorerContainerProps> = ({ projectId 
           <ScmPanel projectId={projectId} />
         </div>
       )}
-      {activeTab === 'canvas' && activeConversationId && (
-        <div className='flex-1 min-h-0'>
-          <SessionWorkflowPanel
-            conversationId={activeConversationId}
-            conversationName={activeConversation?.name}
-            attachment={readSessionWorkflow(activeConversation?.extra)}
-            variant='host'
-            onClose={() => setExplorerHostTab('files')}
-            onAttach={(next) => {
-              const patch = sessionWorkflowPatch(next);
-              void ipcBridge.conversation.update
-                .invoke({
-                  id: activeConversationId,
-                  updates: { extra: patch.extra as NonNullable<typeof activeConversation>['extra'] },
-                  merge_extra: patch.merge_extra,
-                })
-                .then(() => mutateConversation());
-            }}
-          />
+      {activeTab === 'canvas' && (
+        <div className='flex-1 min-h-0 min-w-0'>
+          <SessionCanvasTab />
         </div>
       )}
       <Modal

@@ -657,7 +657,8 @@
     "newDirFailed": "Klasör oluşturulamadı",
     "tabs": {
       "files": "Dosyalar",
-      "changes": "Değişiklikler"
+      "changes": "Değişiklikler",
+      "canvas": "Tuval"
     },
     "addedToChat": "{{name}} sohbete eklendi",
     "imported": "{{count}} dosya içe aktarıldı",

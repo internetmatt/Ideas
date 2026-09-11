@@ -16,6 +16,9 @@ vi.mock('react-i18next', () => ({ useTranslation: () => ({ t: (k: string) => k }
 
 const openPreview = vi.fn();
 vi.mock('@/renderer/pages/conversation/Preview', () => ({ usePreviewContext: () => ({ openPreview }) }));
+vi.mock('@/renderer/pages/conversation/Workflow/SessionCanvasTab', () => ({
+  default: () => <div data-testid='session-canvas-tab'>canvas-tab</div>,
+}));
 
 const fsRead = vi.fn();
 vi.mock('@/renderer/pages/conversation/explorer/monitorTransport', () => ({
@@ -137,6 +140,7 @@ vi.mock('@/common', () => ({
 import { ExplorerContainer } from '@/renderer/pages/conversation/explorer/ExplorerContainer';
 import * as explorerStore from '@/renderer/pages/conversation/explorer/explorerStore';
 import { resetExplorerStoreForTest } from '@/renderer/pages/conversation/explorer/explorerStore';
+import { resetWorkspacePanelTabForTest } from '@/renderer/pages/conversation/explorer/workspacePanelTabStore';
 
 const entry = (over: Partial<ProjectEntryDto>): ProjectEntryDto => ({
   pe_id: 'peA',
@@ -163,6 +167,7 @@ const renderIt = () =>
 
 beforeEach(() => {
   resetExplorerStoreForTest();
+  resetWorkspacePanelTabForTest();
   projectGet.mockReset().mockResolvedValue(detail([entry({ pe_id: 'peA', display_name: 'Root' })]));
   attachFolder.mockReset();
   removeFolder.mockReset();

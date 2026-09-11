@@ -41,7 +41,11 @@ export const BUILTIN_TAB_IDS = [
   'openideas-account',
   'appearance',
   'webui',
-  'flowise',
+  'openideas-chatflows',
+  'openideas-agentflows',
+  'openideas-assistants',
+  'openideas-executions',
+  'openideas-credentials',
   'pet',
   'system',
   'archived',
@@ -57,6 +61,7 @@ export const LEGACY_ANCHOR_REMAP: Record<string, string> = {
   'skills-hub': 'skills',
   capabilities: 'skills',
   display: 'appearance',
+  flowise: 'openideas-chatflows',
 };
 
 /**
@@ -67,6 +72,7 @@ export const LEGACY_ANCHOR_REMAP: Record<string, string> = {
 const GROUP_HEADER_BEFORE: Record<string, string> = {
   agent: 'settings.groupAiCore',
   appearance: 'settings.groupApp',
+  'openideas-chatflows': 'settings.groupOpenIdeas',
   archived: 'settings.archived.title',
   about: 'settings.groupAbout',
 };
@@ -145,7 +151,36 @@ const SettingsSider: React.FC<{ collapsed?: boolean; tooltipEnabled?: boolean }>
         icon: isDesktop ? <Earth /> : <Communication />,
         path: 'webui',
       },
-      flowise: { id: 'flowise', label: t('settings.flowise'), icon: <ShareOne />, path: 'canvas' },
+      'openideas-chatflows': {
+        id: 'openideas-chatflows',
+        label: t('settings.flowise.page.chatflows'),
+        icon: <ShareOne />,
+        path: 'openideas/chatflows',
+      },
+      'openideas-agentflows': {
+        id: 'openideas-agentflows',
+        label: t('settings.flowise.page.agentflows'),
+        icon: <ShareOne />,
+        path: 'openideas/agentflows',
+      },
+      'openideas-assistants': {
+        id: 'openideas-assistants',
+        label: t('settings.flowise.page.assistants'),
+        icon: <ShareOne />,
+        path: 'openideas/assistants',
+      },
+      'openideas-executions': {
+        id: 'openideas-executions',
+        label: t('settings.flowise.page.executions'),
+        icon: <ShareOne />,
+        path: 'openideas/executions',
+      },
+      'openideas-credentials': {
+        id: 'openideas-credentials',
+        label: t('settings.flowise.page.credentials'),
+        icon: <ShareOne />,
+        path: 'openideas/credentials',
+      },
       pet: { id: 'pet', label: t('pet.desktopPet'), icon: <Cat />, path: 'pet' },
       system: { id: 'system', label: t('settings.system'), icon: <System />, path: 'system' },
       archived: {
@@ -242,7 +277,8 @@ const SettingsSider: React.FC<{ collapsed?: boolean; tooltipEnabled?: boolean }>
       })}
     >
       {menus.map((item, index) => {
-        const isSelected = pathname.includes(item.path);
+        const settingsPath = `/settings/${item.path}`;
+        const isSelected = pathname === settingsPath || pathname.startsWith(`${settingsPath}/`);
         const groupHeaderKey = groupHeaderAt.get(index);
         const groupHeader =
           groupHeaderKey && !collapsed ? (

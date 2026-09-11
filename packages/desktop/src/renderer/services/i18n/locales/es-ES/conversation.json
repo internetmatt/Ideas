@@ -656,7 +656,8 @@
     "newDirFailed": "No se pudo crear la carpeta",
     "tabs": {
       "files": "Archivos",
-      "changes": "Cambios"
+      "changes": "Cambios",
+      "canvas": "Lienzo"
     },
     "addedToChat": "Se añadió {{name}} al chat",
     "imported": "{{count}} archivo(s) importado(s)",

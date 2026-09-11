@@ -16,14 +16,13 @@ import { ipcBridge } from '@/common';
 import type { TChatConversation } from '@/common/config/storage';
 import { useCurrentProject } from '@/renderer/pages/conversation/explorer/currentProjectStore';
 import { setExplorerHostTab, useExplorerHostTab } from '@/renderer/pages/conversation/explorer/explorerHostTab';
-import { dispatchWorkspaceEnsureExpanded } from '@/renderer/utils/workspace/workspaceEvents';
+import {
+  dispatchWorkspaceEnsureExpanded,
+  dispatchWorkspaceEnsureOpenEvent,
+} from '@/renderer/utils/workspace/workspaceEvents';
 import { attachChatflowToConversation } from './attachConversationChatflow';
 import SessionChatOverlay from './SessionChatOverlay';
-import {
-  setSessionChatOverlay,
-  toggleSessionChatOverlay,
-  useSessionChatOverlay,
-} from './sessionChatOverlayStore';
+import { setSessionChatOverlay, toggleSessionChatOverlay, useSessionChatOverlay } from './sessionChatOverlayStore';
 import { useSessionWorkflow } from './SessionWorkflowContext';
 import SessionWorkflowPanel from './SessionWorkflowPanel';
 import { readSessionWorkflow, sessionWorkflowPatch, type SessionWorkflowAttachment } from './sessionWorkflow';
@@ -57,8 +56,7 @@ export function useSessionWorkflowChrome(conversation: TChatConversation | undef
   const attachFlow = useCallback(async () => {
     if (!conversation) return;
     try {
-      const next =
-        (await attachChatflowToConversation(conversation)) ??
+      const next = (await attachChatflowToConversation(conversation)) ??
         attachment ?? {
           provider: 'flowise' as const,
           open_by_default: true,
@@ -74,6 +72,7 @@ export function useSessionWorkflowChrome(conversation: TChatConversation | undef
     if (hostedInExplorer) {
       setExplorerHostTab('canvas');
       dispatchWorkspaceEnsureExpanded();
+      dispatchWorkspaceEnsureOpenEvent();
     } else {
       workflow.open();
     }

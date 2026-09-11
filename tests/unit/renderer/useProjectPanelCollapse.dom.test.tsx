@@ -9,6 +9,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { useProjectPanelCollapse } from '@/renderer/hooks/ui/useProjectPanelCollapse';
 import {
+  WORKSPACE_ENSURE_OPEN_EVENT,
   WORKSPACE_STATE_EVENT,
   WORKSPACE_TOGGLE_EVENT,
   type WorkspaceStateDetail,
@@ -69,6 +70,21 @@ describe('useProjectPanelCollapse (P3 host collapse)', () => {
     const { result } = renderHook(() => useProjectPanelCollapse({ projectId: null, isMobile: false, active: false }));
     fireToggle();
     expect(result.current.collapsed).toBe(false); // unchanged
+  });
+
+  it('ensure-open expands a collapsed project panel without toggling away from open', () => {
+    localStorage.setItem('project-panel-collapse:p5', 'collapsed');
+    const { result } = renderHook(() => useProjectPanelCollapse({ projectId: 'p5', isMobile: false, active: true }));
+    expect(result.current.collapsed).toBe(true);
+    act(() => {
+      window.dispatchEvent(new CustomEvent(WORKSPACE_ENSURE_OPEN_EVENT, { cancelable: true }));
+    });
+    expect(result.current.collapsed).toBe(false);
+    expect(localStorage.getItem('project-panel-collapse:p5')).toBe('expanded');
+    act(() => {
+      window.dispatchEvent(new CustomEvent(WORKSPACE_ENSURE_OPEN_EVENT, { cancelable: true }));
+    });
+    expect(result.current.collapsed).toBe(false);
   });
 
   it('broadcasts WORKSPACE_STATE_EVENT so the mac Titlebar icon syncs', () => {

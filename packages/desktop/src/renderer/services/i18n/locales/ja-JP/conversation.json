@@ -655,7 +655,8 @@
     "newDirFailed": "フォルダーの作成に失敗しました",
     "tabs": {
       "files": "ファイル",
-      "changes": "変更"
+      "changes": "変更",
+      "canvas": "キャンバス"
     },
     "addedToChat": "{{name}} をチャットに追加しました",
     "imported": "{{count}} 件のファイルをインポートしました",

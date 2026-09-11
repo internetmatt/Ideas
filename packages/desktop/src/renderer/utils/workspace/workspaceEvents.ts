@@ -1,4 +1,5 @@
 export const WORKSPACE_TOGGLE_EVENT = 'aionui-workspace-toggle';
+export const WORKSPACE_ENSURE_OPEN_EVENT = 'aionui-workspace-ensure-open';
 export const WORKSPACE_STATE_EVENT = 'aionui-workspace-state';
 export const WORKSPACE_HAS_FILES_EVENT = 'aionui-workspace-has-files';
 export const WORKSPACE_ENSURE_EXPANDED_EVENT = 'aionui-workspace-ensure-expanded';
@@ -34,6 +35,14 @@ export function dispatchWorkspaceToggleEvent(): boolean {
 export function dispatchWorkspaceEnsureExpanded(): void {
   if (typeof window === 'undefined') return;
   window.dispatchEvent(new CustomEvent(WORKSPACE_ENSURE_EXPANDED_EVENT));
+}
+
+/** Expand the workspace / project panel if it is collapsed (no-op when already open). */
+export function dispatchWorkspaceEnsureOpenEvent(): boolean {
+  if (typeof window === 'undefined') return false;
+  const event = new CustomEvent(WORKSPACE_ENSURE_OPEN_EVENT, { cancelable: true });
+  window.dispatchEvent(event);
+  return event.defaultPrevented;
 }
 
 export function dispatchWorkspaceStateEvent(collapsed: boolean) {

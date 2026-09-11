@@ -567,6 +567,32 @@ export async function cloneMarketplaceTemplate(
   return parsed;
 }
 
+function asImportBody(payload: unknown): Record<string, unknown> {
+  if (!payload || typeof payload !== 'object' || Array.isArray(payload)) {
+    throw new FlowiseClientError('OpenIdeas import requires a chatflow JSON object', 400);
+  }
+  const row = payload as Record<string, unknown>;
+  const name = typeof row.name === 'string' && row.name.trim() ? row.name : 'Imported flow';
+  const type = isFlowiseFlowType(row.type) ? row.type : 'CHATFLOW';
+  const flowData = typeof row.flowData === 'string' ? row.flowData : EMPTY_FLOW_DATA;
+  return { ...row, name, type, flowData };
+}
+
+/**
+ * Import a chatflow / agentflow JSON through the same create API the blank
+ * buttons use. Ideas file-picks the JSON; OpenIdeas stores the flow.
+ */
+export async function importChatflowJson(baseUrl: string | undefined, payload: unknown): Promise<FlowiseChatflow> {
+  const parsed = parseFlowiseChatflow(
+    await flowiseFetch(resolveFlowiseUrl(baseUrl), '/api/v1/chatflows', {
+      method: 'POST',
+      body: JSON.stringify(asImportBody(payload)),
+    })
+  );
+  if (!parsed) throw new FlowiseClientError('OpenIdeas import returned an invalid chatflow', 502);
+  return parsed;
+}
+
 export type FlowisePredictRequest = {
   question: string;
   chatId?: string;

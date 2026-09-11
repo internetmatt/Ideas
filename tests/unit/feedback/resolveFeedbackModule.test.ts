@@ -35,6 +35,8 @@ describe('resolveFeedbackModule', () => {
     ['/settings/webui', 'webui-remote'],
     ['/settings/canvas', 'conversation-session'],
     ['/settings/canvas/credentials', 'conversation-session'],
+    ['/settings/openideas', 'conversation-session'],
+    ['/settings/openideas/chatflows', 'conversation-session'],
     ['/settings/flowise', 'conversation-session'],
     ['/settings/ext/telegram', 'channel'],
     ['/settings/system', 'system-settings'],
