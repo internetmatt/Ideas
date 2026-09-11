@@ -39,9 +39,17 @@ describe('chatflowConversations', () => {
       id: 'hi',
       name: 'hi',
       type: 'aionrs',
+      model: {
+        id: 'test',
+        platform: 'custom',
+        name: 'Test',
+        base_url: '',
+        api_key: '',
+        use_model: '',
+      },
       created_at: 1,
       modified_at: 1,
-      extra: { session_workflow: { provider: 'flowise', flow_id: 'attached' } },
+      extra: { workspace: '', session_workflow: { provider: 'flowise', flow_id: 'attached' } },
     } as TChatConversation;
     const flows = [
       chatflow({ id: 'attached', name: 'Already a chat' }),

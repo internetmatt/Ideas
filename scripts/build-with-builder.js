@@ -778,7 +778,12 @@ try {
   // 6. Prepare hub resources (index.json + extension zips for offline fallback)
   execSync('node scripts/prepareHubResources.js', { stdio: 'inherit', env: process.env });
 
-  // 6. 运行 electron-builder 生成分发包（DMG/ZIP/EXE等）
+  // 7. Stage the OpenIdeas desktop runtime when supplied by the sibling repo
+  // or AIONUI_OPENIDEAS_RUNTIME_DIR. Release builds can require it explicitly.
+  const { prepareOpenIdeasResources } = require('./prepareOpenIdeasResources.js');
+  prepareOpenIdeasResources({ platform: process.platform, arch: targetArch });
+
+  // 8. 运行 electron-builder 生成分发包（DMG/ZIP/EXE等）
   // Run electron-builder to create distributables (DMG/ZIP/EXE, etc.)
   // Always disable auto-publish to avoid electron-builder's implicit tag-based publishing
   // Publishing is handled by a separate release job in CI

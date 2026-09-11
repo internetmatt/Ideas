@@ -69,8 +69,7 @@ export class OrcaRuntimeClient {
     if (this.ws && this.ws.readyState === WebSocket.OPEN) return;
     const offer = await this.createPairing();
     const endpoint = offer.endpoint.includes('://') ? offer.endpoint : this.api('/api/projecto/orca-runtime/ws');
-    const origin =
-      this.baseUrl || (typeof window !== 'undefined' ? window.location.origin : 'http://127.0.0.1:4715');
+    const origin = this.baseUrl || (typeof window !== 'undefined' ? window.location.origin : 'http://127.0.0.1:4715');
     const url = new URL(endpoint, origin);
     url.searchParams.set('deviceToken', offer.deviceToken);
     if (url.protocol === 'http:') url.protocol = 'ws:';
@@ -121,7 +120,7 @@ export class OrcaRuntimeClient {
       this.pending.set(id, {
         resolve: (frame) => {
           clearTimeout(timer);
-          if (!frame.ok) {
+          if (frame.ok === false) {
             reject(new Error(frame.error.message || frame.error.code));
             return;
           }

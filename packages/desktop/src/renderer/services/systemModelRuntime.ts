@@ -51,7 +51,10 @@ export function isProjectoModelHost(integ: ProjectoIntegrations | undefined = in
   return Boolean(integ.models?.length || integ.pair || integ.defaultVendor);
 }
 
-export function resolveDefaultModelButtonLabel(fallback: string, integ: ProjectoIntegrations | undefined = integrations()): string {
+export function resolveDefaultModelButtonLabel(
+  fallback: string,
+  integ: ProjectoIntegrations | undefined = integrations()
+): string {
   if (!isProjectoModelHost(integ)) return fallback;
   const name = integ?.productName?.trim();
   return name && name.toLowerCase() !== 'ideas' ? name : PROJECTO_DEFAULT_LABEL;
@@ -104,7 +107,10 @@ export function projectoPresetProviders(integ: ProjectoIntegrations | undefined 
   });
 }
 
-export function mergeProjectoProviders(existing: IProvider[], integ: ProjectoIntegrations | undefined = integrations()): IProvider[] {
+export function mergeProjectoProviders(
+  existing: IProvider[],
+  integ: ProjectoIntegrations | undefined = integrations()
+): IProvider[] {
   const presets = projectoPresetProviders(integ);
   if (presets.length === 0) return existing;
   const seen = new Set(existing.map((provider) => provider.id));
@@ -127,7 +133,7 @@ export type SystemProviderSeed = {
   platform?: string;
 };
 
-type IntegrationsBag = {
+export type IntegrationsBag = {
   systemProviders?: SystemProviderSeed[];
   /** Preferred source when multiple seeds exist. */
   defaultSystemModelSource?: SystemModelSource;
@@ -136,13 +142,6 @@ type IntegrationsBag = {
   ideasApiKey?: string;
   pairApiKey?: string;
 };
-
-declare global {
-  interface Window {
-    /** Ideas Admin alias — merged over Projecto inject when both exist. */
-    __IDEAS_INTEGRATIONS__?: IntegrationsBag;
-  }
-}
 
 const IDEAS_DEFAULT_BASE = 'https://api.ideus.ai/v1';
 const IDEAS_DEFAULT_MODELS = ['openai/gpt-4o-mini', 'anthropic/claude-sonnet-4'];
@@ -233,7 +232,9 @@ export function systemSeedToDeepLinkPrefill(seed: SystemProviderSeed): {
   };
 }
 
-export function pickPreferredSystemSeed(seeds: SystemProviderSeed[] = resolveSystemProviderSeeds()): SystemProviderSeed | null {
+export function pickPreferredSystemSeed(
+  seeds: SystemProviderSeed[] = resolveSystemProviderSeeds()
+): SystemProviderSeed | null {
   if (seeds.length === 0) return null;
   const preferred = readIntegrations().defaultSystemModelSource;
   if (preferred) {

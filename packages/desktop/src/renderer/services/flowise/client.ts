@@ -6,7 +6,7 @@
  * Typed OpenIdeas HTTP client. Talks to the sidecar; does not import flowise-ui.
  */
 
-import { resolveFlowiseUrl } from './resolveFlowiseUrl';
+import { isLoopbackFlowiseEngine, resolveFlowiseUrl } from './resolveFlowiseUrl';
 import {
   CUSTOM_MCP_AUTH_TYPES,
   CUSTOM_MCP_SERVER_STATUSES,
@@ -52,7 +52,8 @@ export function parseFlowiseChatflow(raw: unknown): FlowiseChatflow | null {
   const row = raw as Record<string, unknown>;
   if (typeof row.id !== 'string' || !row.id) return null;
   if (typeof row.name !== 'string') return null;
-  const workspaceId = typeof row.workspaceId === 'string' && row.workspaceId ? row.workspaceId : DEFAULT_FLOWISE_WORKSPACE_ID;
+  const workspaceId =
+    typeof row.workspaceId === 'string' && row.workspaceId ? row.workspaceId : DEFAULT_FLOWISE_WORKSPACE_ID;
   return {
     id: row.id,
     name: row.name,
@@ -89,7 +90,8 @@ export function parseFlowiseTool(raw: unknown): FlowiseTool | null {
   const row = raw as Record<string, unknown>;
   if (typeof row.id !== 'string' || !row.id) return null;
   if (typeof row.name !== 'string' || !row.name) return null;
-  const workspaceId = typeof row.workspaceId === 'string' && row.workspaceId ? row.workspaceId : DEFAULT_FLOWISE_WORKSPACE_ID;
+  const workspaceId =
+    typeof row.workspaceId === 'string' && row.workspaceId ? row.workspaceId : DEFAULT_FLOWISE_WORKSPACE_ID;
   return {
     id: row.id,
     name: row.name,
@@ -123,7 +125,8 @@ export function parseFlowiseCustomMcpServer(raw: unknown): FlowiseCustomMcpServe
   const row = raw as Record<string, unknown>;
   if (typeof row.id !== 'string' || !row.id) return null;
   if (typeof row.name !== 'string' || !row.name) return null;
-  const workspaceId = typeof row.workspaceId === 'string' && row.workspaceId ? row.workspaceId : DEFAULT_FLOWISE_WORKSPACE_ID;
+  const workspaceId =
+    typeof row.workspaceId === 'string' && row.workspaceId ? row.workspaceId : DEFAULT_FLOWISE_WORKSPACE_ID;
   const toolCount = typeof row.toolCount === 'number' && Number.isFinite(row.toolCount) ? row.toolCount : 0;
   return {
     id: row.id,
@@ -150,7 +153,7 @@ export function parseFlowiseCustomMcpServerList(raw: unknown): FlowiseCustomMcpS
 export function parseFlowiseCustomMcpTools(raw: unknown): FlowiseCustomMcpTool[] {
   const rows = typeof raw === 'string' ? safeJsonArray(raw) : asFlowiseList(raw);
   return rows
-    .map((item) => {
+    .map((item): FlowiseCustomMcpTool | null => {
       if (!item || typeof item !== 'object') return null;
       const row = item as Record<string, unknown>;
       const name = typeof row.name === 'string' ? row.name : typeof row.toolName === 'string' ? row.toolName : '';
@@ -175,7 +178,8 @@ function safeJsonArray(value: string): unknown[] {
 /** Same-origin `/canvas-island` can reuse the OpenIdeas iframe session cookies. */
 function flowiseCredentials(baseUrl: string): RequestCredentials {
   const resolved = resolveFlowiseUrl(baseUrl);
-  return resolved.startsWith('/') ? 'same-origin' : 'omit';
+  if (resolved.startsWith('/')) return 'same-origin';
+  return isLoopbackFlowiseEngine(resolved) ? 'include' : 'omit';
 }
 
 async function flowiseFetch(baseUrl: string, path: string, init?: RequestInit): Promise<unknown> {
@@ -215,7 +219,9 @@ export async function listChatflows(baseUrl?: string, type?: FlowiseFlowType): P
 }
 
 export async function getChatflow(baseUrl: string | undefined, id: string): Promise<FlowiseChatflow> {
-  const parsed = parseFlowiseChatflow(await flowiseFetch(resolveFlowiseUrl(baseUrl), `/api/v1/chatflows/${encodeURIComponent(id)}`));
+  const parsed = parseFlowiseChatflow(
+    await flowiseFetch(resolveFlowiseUrl(baseUrl), `/api/v1/chatflows/${encodeURIComponent(id)}`)
+  );
   if (!parsed) throw new FlowiseClientError('OpenIdeas returned an invalid chatflow', 502);
   return parsed;
 }
@@ -313,10 +319,15 @@ export async function createCustomMcpServer(
 }
 
 export async function deleteCustomMcpServer(baseUrl: string | undefined, id: string): Promise<void> {
-  await flowiseFetch(resolveFlowiseUrl(baseUrl), `/api/v1/custom-mcp-servers/${encodeURIComponent(id)}`, { method: 'DELETE' });
+  await flowiseFetch(resolveFlowiseUrl(baseUrl), `/api/v1/custom-mcp-servers/${encodeURIComponent(id)}`, {
+    method: 'DELETE',
+  });
 }
 
-export async function authorizeCustomMcpServer(baseUrl: string | undefined, id: string): Promise<FlowiseCustomMcpServer> {
+export async function authorizeCustomMcpServer(
+  baseUrl: string | undefined,
+  id: string
+): Promise<FlowiseCustomMcpServer> {
   const parsed = parseFlowiseCustomMcpServer(
     await flowiseFetch(resolveFlowiseUrl(baseUrl), `/api/v1/custom-mcp-servers/${encodeURIComponent(id)}/authorize`, {
       method: 'POST',
@@ -332,13 +343,16 @@ export function parseFlowiseApiKey(raw: unknown): FlowiseApiKey | null {
   if (typeof row.id !== 'string' || !row.id) return null;
   const keyName = typeof row.keyName === 'string' ? row.keyName : typeof row.name === 'string' ? row.name : '';
   if (!keyName) return null;
-  const workspaceId = typeof row.workspaceId === 'string' && row.workspaceId ? row.workspaceId : DEFAULT_FLOWISE_WORKSPACE_ID;
+  const workspaceId =
+    typeof row.workspaceId === 'string' && row.workspaceId ? row.workspaceId : DEFAULT_FLOWISE_WORKSPACE_ID;
   return {
     id: row.id,
     keyName,
     apiKey: typeof row.apiKey === 'string' ? row.apiKey : '',
     apiSecret: typeof row.apiSecret === 'string' ? row.apiSecret : undefined,
-    permissions: Array.isArray(row.permissions) ? row.permissions.filter((item): item is string => typeof item === 'string') : [],
+    permissions: Array.isArray(row.permissions)
+      ? row.permissions.filter((item): item is string => typeof item === 'string')
+      : [],
     workspaceId,
     updatedDate: optionalDate(row.updatedDate),
   };
@@ -394,7 +408,8 @@ export function parseFlowiseDocumentStore(raw: unknown): FlowiseDocumentStore | 
   const row = raw as Record<string, unknown>;
   if (typeof row.id !== 'string' || !row.id) return null;
   if (typeof row.name !== 'string' || !row.name) return null;
-  const workspaceId = typeof row.workspaceId === 'string' && row.workspaceId ? row.workspaceId : DEFAULT_FLOWISE_WORKSPACE_ID;
+  const workspaceId =
+    typeof row.workspaceId === 'string' && row.workspaceId ? row.workspaceId : DEFAULT_FLOWISE_WORKSPACE_ID;
   return {
     id: row.id,
     name: row.name,
@@ -436,13 +451,16 @@ export async function createDocumentStore(
 }
 
 export async function deleteDocumentStore(baseUrl: string | undefined, id: string): Promise<void> {
-  await flowiseFetch(resolveFlowiseUrl(baseUrl), `/api/v1/document-store/store/${encodeURIComponent(id)}`, { method: 'DELETE' });
+  await flowiseFetch(resolveFlowiseUrl(baseUrl), `/api/v1/document-store/store/${encodeURIComponent(id)}`, {
+    method: 'DELETE',
+  });
 }
 
 export function marketplaceKindFromType(type: unknown): MarketplaceTemplateKind {
   const value = typeof type === 'string' ? type.toLowerCase() : '';
   if (value === 'tool' || value === 'tools') return 'TOOL';
-  if (value === 'agentflow' || value === 'agentflowv2' || value === 'multiagent' || value === 'agent') return 'AGENTFLOW';
+  if (value === 'agentflow' || value === 'agentflowv2' || value === 'multiagent' || value === 'agent')
+    return 'AGENTFLOW';
   return 'CHATFLOW';
 }
 
@@ -450,11 +468,7 @@ export function parseFlowiseMarketplaceTemplate(raw: unknown, custom = false): F
   if (!raw || typeof raw !== 'object') return null;
   const row = raw as Record<string, unknown>;
   const templateName =
-    typeof row.templateName === 'string'
-      ? row.templateName
-      : typeof row.name === 'string'
-        ? row.name
-        : '';
+    typeof row.templateName === 'string' ? row.templateName : typeof row.name === 'string' ? row.name : '';
   if (!templateName) return null;
   const type = typeof row.type === 'string' && row.type ? row.type : 'Chatflow';
   const id = typeof row.id === 'string' && row.id ? row.id : `${custom ? 'custom' : 'mp'}-${templateName}`;
@@ -472,9 +486,15 @@ export function parseFlowiseMarketplaceTemplate(raw: unknown, custom = false): F
     description: typeof row.description === 'string' ? row.description : '',
     flowData,
     badge: typeof row.badge === 'string' ? row.badge : undefined,
-    framework: Array.isArray(row.framework) ? row.framework.filter((item): item is string => typeof item === 'string') : undefined,
-    usecases: Array.isArray(row.usecases) ? row.usecases.filter((item): item is string => typeof item === 'string') : undefined,
-    categories: Array.isArray(row.categories) ? row.categories.filter((item): item is string => typeof item === 'string') : undefined,
+    framework: Array.isArray(row.framework)
+      ? row.framework.filter((item): item is string => typeof item === 'string')
+      : undefined,
+    usecases: Array.isArray(row.usecases)
+      ? row.usecases.filter((item): item is string => typeof item === 'string')
+      : undefined,
+    categories: Array.isArray(row.categories)
+      ? row.categories.filter((item): item is string => typeof item === 'string')
+      : undefined,
     schema: typeof row.schema === 'string' ? row.schema : undefined,
     func: typeof row.func === 'string' ? row.func : undefined,
     custom,
@@ -497,7 +517,8 @@ export function marketplaceTemplateHasScheduleInput(template: Pick<FlowiseMarket
       if (!node || typeof node !== 'object') return false;
       const data = (node as { data?: Record<string, unknown> }).data;
       if (!data || typeof data !== 'object') return false;
-      const inputs = data.inputs && typeof data.inputs === 'object' ? (data.inputs as Record<string, unknown>) : undefined;
+      const inputs =
+        data.inputs && typeof data.inputs === 'object' ? (data.inputs as Record<string, unknown>) : undefined;
       return data.name === 'startAgentflow' && inputs?.startInputType === 'scheduleInput';
     });
   } catch {
@@ -508,7 +529,7 @@ export function marketplaceTemplateHasScheduleInput(template: Pick<FlowiseMarket
 export async function listMarketplaceTemplates(baseUrl?: string): Promise<FlowiseMarketplaceTemplate[]> {
   const [stock, custom] = await Promise.all([
     flowiseFetch(resolveFlowiseUrl(baseUrl), '/api/v1/marketplaces/templates'),
-    flowiseFetch(resolveFlowiseUrl(baseUrl), '/api/v1/marketplaces/custom').catch(() => []),
+    flowiseFetch(resolveFlowiseUrl(baseUrl), '/api/v1/marketplaces/custom').catch((): unknown[] => []),
   ]);
   return [...parseFlowiseMarketplaceTemplateList(stock), ...parseFlowiseMarketplaceTemplateList(custom, true)];
 }
@@ -530,7 +551,8 @@ export async function cloneMarketplaceTemplate(
   baseUrl: string | undefined,
   template: Pick<FlowiseMarketplaceTemplate, 'templateName' | 'kind' | 'type' | 'flowData'>
 ): Promise<FlowiseChatflow> {
-  const type: Extract<FlowiseFlowType, 'CHATFLOW' | 'AGENTFLOW'> = template.kind === 'CHATFLOW' ? 'CHATFLOW' : 'AGENTFLOW';
+  const type: Extract<FlowiseFlowType, 'CHATFLOW' | 'AGENTFLOW'> =
+    template.kind === 'CHATFLOW' ? 'CHATFLOW' : 'AGENTFLOW';
   const parsed = parseFlowiseChatflow(
     await flowiseFetch(resolveFlowiseUrl(baseUrl), '/api/v1/chatflows', {
       method: 'POST',

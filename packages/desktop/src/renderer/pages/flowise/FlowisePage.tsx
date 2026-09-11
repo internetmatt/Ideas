@@ -102,15 +102,15 @@ const FlowisePage: React.FC = () => {
         },
         merge_extra: true,
       });
-      setConversation((current) =>
+      setConversation((current): TChatConversation | null =>
         current
-          ? {
+          ? ({
               ...current,
               extra: {
                 ...(current.extra as Record<string, unknown>),
                 session_workflow: next ?? undefined,
               } as TChatConversation['extra'],
-            }
+            } as TChatConversation)
           : current
       );
     },
@@ -212,7 +212,12 @@ const FlowisePage: React.FC = () => {
             : await createBlankAgentflow(flowiseUrl, canvasNameForAssistant(assistantName, 'AGENTFLOW'));
         setFlows((current) => [created, ...current.filter((flow) => flow.id !== created.id)]);
         setSelectedId(created.id);
-        const nextType = created.type && isFlowiseFlowType(created.type) ? created.type : kind === 'agentflow' ? 'AGENTFLOW' : 'CHATFLOW';
+        const nextType =
+          created.type && isFlowiseFlowType(created.type)
+            ? created.type
+            : kind === 'agentflow'
+              ? 'AGENTFLOW'
+              : 'CHATFLOW';
         const typeQuery = isAgentEditor(nextType) ? `&type=${encodeURIComponent(nextType)}` : '';
         void navigate(`/canvas?flowId=${encodeURIComponent(created.id)}${typeQuery}`, { replace: true });
         if (conversation) {

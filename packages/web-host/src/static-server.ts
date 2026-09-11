@@ -248,8 +248,8 @@ function mergeIntegrations(
 ): Record<string, unknown> | null {
   if (!projecto && !branding) return null;
   return {
-    ...(projecto ?? {}),
-    ...(branding ?? {}),
+    ...projecto,
+    ...branding,
     canvasIsland: true,
     flowiseUrl: (branding?.flowiseUrl as string | undefined) || projecto?.flowiseUrl || CANVAS_ISLAND_MOUNT,
   };
@@ -278,7 +278,9 @@ function escapeHtml(value: string): string {
 export function isAlreadyBehindProjecto(req: Pick<IncomingMessage, 'headers'>): boolean {
   const forwardedHost = String(req.headers['x-forwarded-host'] || '').trim();
   if (forwardedHost) return true;
-  const plane = String(req.headers['x-projecto-plane'] || '').trim().toLowerCase();
+  const plane = String(req.headers['x-projecto-plane'] || '')
+    .trim()
+    .toLowerCase();
   return plane === 'cowork' || plane === 'ideas';
 }
 
@@ -361,11 +363,15 @@ export async function startStaticServer(opts: StaticServerOptions): Promise<Stat
         forwardToFlowiseIsland(req, res, flowiseOrigin);
         return;
       }
-      if (isFlowiseApiStolenByIdeas(req.url, typeof req.headers.referer === 'string' ? req.headers.referer : undefined)) {
+      if (
+        isFlowiseApiStolenByIdeas(req.url, typeof req.headers.referer === 'string' ? req.headers.referer : undefined)
+      ) {
         forwardToFlowiseIsland(req, res, flowiseOrigin, req.url);
         return;
       }
-      if (isFlowiseAssetStolenByIdeas(req.url, typeof req.headers.referer === 'string' ? req.headers.referer : undefined)) {
+      if (
+        isFlowiseAssetStolenByIdeas(req.url, typeof req.headers.referer === 'string' ? req.headers.referer : undefined)
+      ) {
         forwardToFlowiseIsland(req, res, flowiseOrigin, req.url);
         return;
       }
@@ -393,10 +399,7 @@ export async function startStaticServer(opts: StaticServerOptions): Promise<Stat
       // aioncore only accepts POST /login, so a GET would 405. When Projecto
       // / Igloo is reachable, bounce to that IdP instead of the AionUi form.
       const loginPath = req.url.split('?')[0].split('#')[0];
-      if (
-        (loginPath === '/login' || loginPath === '/login/') &&
-        (req.method === 'GET' || req.method === 'HEAD')
-      ) {
+      if ((loginPath === '/login' || loginPath === '/login/') && (req.method === 'GET' || req.method === 'HEAD')) {
         if (isAlreadyBehindProjecto(req)) {
           res.writeHead(302, { location: '/#/login', 'cache-control': 'no-store' });
           res.end();
@@ -418,12 +421,7 @@ export async function startStaticServer(opts: StaticServerOptions): Promise<Stat
 
       // /api/* — reverse proxy to backend (includes /api/auth/*).
       // POST /login and /logout are aionui-auth's top-level auth endpoints.
-      if (
-        req.url.startsWith('/api/') ||
-        req.url.startsWith('/api?') ||
-        req.url === '/login' ||
-        req.url === '/logout'
-      ) {
+      if (req.url.startsWith('/api/') || req.url.startsWith('/api?') || req.url === '/login' || req.url === '/logout') {
         forwardToBackend(req, res, opts.backendPort);
         return;
       }

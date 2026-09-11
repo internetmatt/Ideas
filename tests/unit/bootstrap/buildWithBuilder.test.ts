@@ -298,6 +298,10 @@ Module._load = function patchedLoad(request, parent, isMain) {
     return recordPrepareCall;
   }
 
+  if (request.endsWith('/prepareOpenIdeasResources.js')) {
+    return { prepareOpenIdeasResources: () => ({ staged: true, source: 'mock-openideas' }) };
+  }
+
   if (request.endsWith('packages/shared-scripts/src/prepare-aioncore.js')) {
     return { prepareAioncore: recordPrepareCall };
   }

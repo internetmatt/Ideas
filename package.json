@@ -263,6 +263,7 @@
     "node": ">=22 <25"
   },
   "aioncoreVersion": "v0.2.1",
+  "openIdeasRef": "0a9bb8d576eb25b45b5dd21083aba9aa0ae2d541",
   "electronRebuild": {
     "electronVersion": "^37.3.1"
   },

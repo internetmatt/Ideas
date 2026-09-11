@@ -115,6 +115,11 @@ extraResources:
     to: bundled-aioncore
   - from: resources/hub
     to: hub
+  # Optional prebuilt OpenIdeas/Flowise runtime staged by prepareOpenIdeasResources.js.
+  - from: resources/bundled-openideas
+    to: bundled-openideas
+    filter:
+      - '**/*'
 win:
   target:
     - nsis

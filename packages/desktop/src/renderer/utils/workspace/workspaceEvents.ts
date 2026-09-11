@@ -1,6 +1,7 @@
 export const WORKSPACE_TOGGLE_EVENT = 'aionui-workspace-toggle';
 export const WORKSPACE_STATE_EVENT = 'aionui-workspace-state';
 export const WORKSPACE_HAS_FILES_EVENT = 'aionui-workspace-has-files';
+export const WORKSPACE_ENSURE_EXPANDED_EVENT = 'aionui-workspace-ensure-expanded';
 
 export interface WorkspaceStateDetail {
   collapsed: boolean;
@@ -27,6 +28,12 @@ export function dispatchWorkspaceToggleEvent(): boolean {
   const event = new CustomEvent(WORKSPACE_TOGGLE_EVENT, { cancelable: true });
   window.dispatchEvent(event);
   return event.defaultPrevented;
+}
+
+/** Request expansion without accidentally collapsing an already-open panel. */
+export function dispatchWorkspaceEnsureExpanded(): void {
+  if (typeof window === 'undefined') return;
+  window.dispatchEvent(new CustomEvent(WORKSPACE_ENSURE_EXPANDED_EVENT));
 }
 
 export function dispatchWorkspaceStateEvent(collapsed: boolean) {

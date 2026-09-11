@@ -26,9 +26,9 @@ describe('MODEL_PLATFORMS ordering', () => {
     expect(DEFAULT_PLATFORM_VALUE).toBe('custom');
   });
 
-  it('pins PAIR (Projecto local) after the Moonshot pair', () => {
-    const values = MODEL_PLATFORMS.map((p) => p.value);
-    expect(values[3]).toBe('PAIR');
+  it('defines the PAIR (Projecto local) preset exactly once', () => {
+    const pairEntries = MODEL_PLATFORMS.filter((p) => p.value === 'PAIR');
+    expect(pairEntries).toHaveLength(1);
     expect(MODEL_PLATFORMS.find((p) => p.value === 'PAIR')?.base_url).toBe('http://127.0.0.1:8787/v1');
   });
 

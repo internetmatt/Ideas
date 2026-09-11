@@ -13,6 +13,7 @@
  */
 
 import type { FlowiseFlowType } from './types';
+import type { IntegrationsBag } from '../systemModelRuntime';
 
 export const DEFAULT_FLOWISE_URL = 'http://127.0.0.1:3010';
 
@@ -26,7 +27,7 @@ export const CANVAS_HOST_STORAGE_KEY = 'ideas.canvasHost';
 /** Projector EXE cowork mount — used only when host is projector and nothing is injected. */
 export const DEFAULT_PROJECTOR_FLOWISE_URL = 'http://127.0.0.1:4715/apps/agent-workspace/flows';
 
-export type FlowiseIntegrations = {
+export type FlowiseIntegrations = IntegrationsBag & {
   flowiseUrl?: string;
   canvasIsland?: boolean;
   ideasHostedUrl?: string;
@@ -69,7 +70,7 @@ function isBrowserWebUi(): boolean {
   return typeof window !== 'undefined' && !window.electronAPI;
 }
 
-function isLoopbackFlowiseEngine(configured: string): boolean {
+export function isLoopbackFlowiseEngine(configured: string): boolean {
   try {
     const url = new URL(configured);
     if (url.hostname !== '127.0.0.1' && url.hostname !== 'localhost' && url.hostname !== '::1') {
