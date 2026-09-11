@@ -29,13 +29,7 @@ import OpenIdeasGearMenu from '../../OpenIdeasGearMenu';
 
 type EngineStatus = 'checking' | 'online' | 'offline';
 
-const LIFTED_OPENIDEAS_PAGES = new Set([
-  'tools',
-  'apikey',
-  'document-stores',
-  'marketplaces',
-  'account',
-]);
+const LIFTED_OPENIDEAS_PAGES = new Set(['tools', 'apikey', 'document-stores', 'marketplaces', 'account']);
 
 const FlowiseModalContent: React.FC = () => {
   const { t } = useTranslation();

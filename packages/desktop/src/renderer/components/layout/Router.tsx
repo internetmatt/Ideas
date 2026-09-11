@@ -119,7 +119,10 @@ const PanelRoute: React.FC<{ layout: React.ReactElement }> = ({ layout }) => {
           <Route path='/settings/webui' element={withRouteFallback(WebuiSettings)} />
           <Route path='/settings/canvas/tools' element={<Navigate to='/settings/tools' replace />} />
           <Route path='/settings/canvas/apikey' element={<Navigate to='/settings/api-keys' replace />} />
-          <Route path='/settings/canvas/document-stores' element={<Navigate to='/settings/document-stores' replace />} />
+          <Route
+            path='/settings/canvas/document-stores'
+            element={<Navigate to='/settings/document-stores' replace />}
+          />
           <Route path='/settings/canvas/marketplaces' element={<Navigate to='/settings/marketplaces' replace />} />
           <Route path='/settings/canvas/account' element={<Navigate to='/settings/openideas-account' replace />} />
           <Route path='/settings/canvas/:page' element={<FlowiseSettingsRedirect />} />

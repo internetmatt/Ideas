@@ -138,8 +138,14 @@ const SessionWorkflowPanel: React.FC<Props> = ({
       try {
         const created =
           kind === 'chatflow'
-            ? await createBlankChatflow(baseUrl, conversationName?.trim() || t('conversation.workflow.untitledChatflow'))
-            : await createBlankAgentflow(baseUrl, conversationName?.trim() || t('conversation.workflow.untitledAgentflow'));
+            ? await createBlankChatflow(
+                baseUrl,
+                conversationName?.trim() || t('conversation.workflow.untitledChatflow')
+              )
+            : await createBlankAgentflow(
+                baseUrl,
+                conversationName?.trim() || t('conversation.workflow.untitledAgentflow')
+              );
         setFlows((current) => [created, ...current.filter((flow) => flow.id !== created.id)]);
         attach(created);
       } catch {

@@ -22,13 +22,7 @@ export const OPENIDEAS_SETTINGS_PAGES = [
 ] as const;
 
 /** Pages shown as Ideas settings sider rows (the rest stay in the gear menu). */
-export const OPENIDEAS_SIDER_PAGES = [
-  'chatflows',
-  'agentflows',
-  'assistants',
-  'executions',
-  'credentials',
-] as const;
+export const OPENIDEAS_SIDER_PAGES = ['chatflows', 'agentflows', 'assistants', 'executions', 'credentials'] as const;
 
 export type OpenIdeasSettingsPage = (typeof OPENIDEAS_SETTINGS_PAGES)[number];
 
