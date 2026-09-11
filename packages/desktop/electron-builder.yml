@@ -1,15 +1,14 @@
-# appId and executableName stay on the upstream identity on purpose: appId is
-# the OS-level application identity, so changing it makes the OS treat this as
-# a different app — breaking auto-update and orphaning existing user data.
-appId: com.aionui.app
+# Ideas is a distinct product from upstream AionUi: own bundle id, executable,
+# protocol, and icons so Dock / Activity Monitor / Finder no longer say AionUi.
+appId: ai.ideus.ideas
 productName: Ideas
-executableName: AionUi
-copyright: Copyright © 2024 AionUi
+executableName: Ideas
+copyright: Copyright © 2026 Ideus.ai
 
 protocols:
-  - name: AionUi Protocol
+  - name: Ideas Protocol
     schemes:
-      - aionui
+      - ideas
 
 asar:
   smartUnpack: true
@@ -172,17 +171,17 @@ linux:
   icon: resources/app.png
   artifactName: ${productName}-${version}-${os}-${arch}.${ext}
   category: Utility
-  maintainer: aionui
-  vendor: aionui
+  maintainer: ideus.ai
+  vendor: Ideus
   synopsis: ${description}
   description: ${description}
   desktop:
     entry:
-      Name: AionUi
+      Name: Ideas
       Comment: ${description}
-      Icon: AionUi
+      Icon: Ideas
       Categories: Office;Utility;
-      MimeType: x-scheme-handler/aionui;
+      MimeType: x-scheme-handler/ideas;
 
 npmRebuild: false
 buildDependenciesFromSource: false
@@ -221,7 +220,7 @@ electronDownload:
 
 publish:
   provider: github
-  owner: iOfficeAI
-  repo: AionUi
-  publishAutoUpdate: true
+  owner: internetmatt
+  repo: Ideas
+  publishAutoUpdate: false
   releaseType: release

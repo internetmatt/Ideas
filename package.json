@@ -1,12 +1,12 @@
 {
-  "name": "AionUi",
+  "name": "Ideas",
   "version": "2.2.1",
-  "description": "Transform your command-line AI agent into a modern, efficient AI Chat interface.",
+  "description": "Ideas — Ideus.ai desktop workspace for agents, canvas, and OpenIdeas.",
   "keywords": [],
   "license": "Apache-2.0",
   "author": {
-    "name": "AionUi",
-    "email": "service@aionui.com"
+    "name": "Ideus",
+    "email": "hello@ideus.ai"
   },
   "workspaces": [
     "packages/*"
