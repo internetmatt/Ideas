@@ -16,6 +16,7 @@ type QuitCleanupDeps = {
   destroyTray: () => void;
   disposeCronResumeListener: () => void;
   stopBackend: () => Promise<void>;
+  stopOpenIdeas: () => Promise<void>;
   destroyPetWindow: () => Promise<void> | void;
   logInfo: (message: string) => void;
   logWarn: (message: string) => void;
@@ -54,6 +55,8 @@ async function runQuitCleanup(deps: QuitCleanupDeps): Promise<void> {
 
   const cleanup = async () => {
     deps.disposeCronResumeListener();
+
+    await deps.stopOpenIdeas().catch((err) => deps.logError('[App] Failed to stop OpenIdeas:', err));
 
     await deps.stopBackend().catch((err) => deps.logError('[App] Failed to stop backend:', err));
 

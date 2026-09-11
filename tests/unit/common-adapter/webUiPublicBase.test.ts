@@ -44,7 +44,6 @@ describe('webUiPublicBase', () => {
 
 describe('resolveIdeasHostShellUrl', () => {
   it('returns null unless attach env is set (dev)', () => {
-  it('returns null unless attach env is set', () => {
     expect(resolveIdeasHostShellUrl({})).toBeNull();
   });
 

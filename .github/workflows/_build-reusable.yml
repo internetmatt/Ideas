@@ -149,6 +149,45 @@ jobs:
       - name: Run postinstall
         run: bun run postinstall || true
 
+      # The Ideas DMG owns the OpenIdeas/Flowise process. Build it from the
+      # paired upstream on the same architecture as the target DMG so sqlite3
+      # and the bundled Node executable cannot drift from the package.
+      - name: Resolve pinned OpenIdeas revision (macOS only)
+        if: startsWith(matrix.platform, 'macos')
+        id: openideas-ref
+        shell: bash
+        run: echo "ref=$(node -p \"require('./package.json').openIdeasRef\")" >> "$GITHUB_OUTPUT"
+
+      - name: Checkout OpenIdeas runtime source (macOS only)
+        if: startsWith(matrix.platform, 'macos')
+        uses: actions/checkout@v6
+        with:
+          repository: internetmatt/OpenIdeas
+          ref: ${{ steps.openideas-ref.outputs.ref }}
+          path: .openideas-source
+
+      - name: Setup pnpm for OpenIdeas (macOS only)
+        if: startsWith(matrix.platform, 'macos')
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10.26.2
+
+      - name: Setup OpenIdeas Node.js (macOS only)
+        if: startsWith(matrix.platform, 'macos')
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: pnpm
+          cache-dependency-path: .openideas-source/pnpm-lock.yaml
+
+      - name: Build OpenIdeas desktop runtime (macOS only)
+        if: startsWith(matrix.platform, 'macos')
+        working-directory: .openideas-source
+        run: |
+          test "$(node -p 'process.arch')" = "${{ matrix.arch }}"
+          pnpm install --frozen-lockfile
+          pnpm build:desktop-runtime
+
       - name: Setup Windows native dependencies (for Windows only)
         if: startsWith(matrix.platform, 'windows')
         run: |
@@ -508,6 +547,8 @@ jobs:
         env:
           NODE_OPTIONS: '--max-old-space-size=8192'
           AIONUI_BACKEND_RUN_ID: ${{ inputs.aioncore_run_id }}
+          AIONUI_OPENIDEAS_RUNTIME_DIR: ${{ github.workspace }}/.openideas-source/dist/desktop-runtime/darwin-${{ matrix.arch }}
+          AIONUI_OPENIDEAS_REQUIRED: '1'
           npm_config_arch: ${{ matrix.arch }}
           APP_ID: ${{ secrets.APP_ID }}
           appleId: ${{ secrets.APPLE_ID }}

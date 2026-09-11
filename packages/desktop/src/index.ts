@@ -33,6 +33,7 @@ import { ProcessConfig } from './process/utils/initStorage';
 import type { BackendStartupFailureInfo } from './common/types/platform/electron';
 import { registerWindowMaximizeListeners } from '@process/bridge';
 import { BackendLifecycleManager } from '@aionui/web-host';
+import { OpenIdeasSidecarManager } from './process/services/openIdeasSidecar';
 import { resolveBinaryPath } from '@process/backend';
 import './process/bridge/feedbackBridge';
 import { wasLaunchedAtLogin } from '@process/bridge/applicationBridge';
@@ -220,6 +221,7 @@ const backendManager = new BackendLifecycleManager(
   },
   resolveBinaryPath
 );
+const openIdeasManager = new OpenIdeasSidecarManager();
 let disposeCronResumeListener: (() => void) | null = null;
 
 // Flag tracking whether the backend subprocess started successfully. Read by
@@ -577,7 +579,6 @@ const createWindow = ({ showOnReady = true }: { showOnReady?: boolean } = {}): v
 
   // Load the renderer: host :4715 shell, Vite URL in development, or built HTML.
   const hostShellUrl = resolveIdeasHostShellUrl(process.env, { isPackaged: app.isPackaged });
-  const hostShellUrl = resolveIdeasHostShellUrl();
   const rendererUrl = process.env['ELECTRON_RENDERER_URL'];
   const fallbackFile = path.join(__dirname, '../renderer/index.html');
 
@@ -815,7 +816,6 @@ const handleAppReady = async (): Promise<void> => {
 
   const debugBackendStartupFailure = resolveDebugBackendStartupFailure();
   const hostShellUrl = resolveIdeasHostShellUrl(process.env, { isPackaged: app.isPackaged });
-  const hostShellUrl = resolveIdeasHostShellUrl();
   if (hostShellUrl) {
     console.log(`[AionUi] Host shell attach — skipping local aioncore (${hostShellUrl})`);
     mark('hostShellAttach');
@@ -895,6 +895,38 @@ const handleAppReady = async (): Promise<void> => {
     const bootBackendPort = (globalThis as typeof globalThis & { __backendPort?: number }).__backendPort;
     if (backendStartedOk && bootBackendPort) {
       await ensureAdminUserOnce(bootBackendPort);
+    }
+
+    // The Ideas desktop distribution owns its OpenIdeas/Flowise engine just as
+    // it owns aioncore. An existing :3010 service is reused; packaged builds
+    // otherwise launch the runtime staged in Contents/Resources.
+    if (!isE2ETestMode) {
+      const { getDataPath } = await import('./process/utils/utils');
+      const openIdeas = await openIdeasManager.start({
+        dataDirectory: path.join(getDataPath(), 'openideas'),
+        resourcesPath: process.resourcesPath,
+      });
+      await Promise.all(
+        (openIdeas.sessionCookies ?? []).map(async (setCookie) => {
+          const pair = setCookie.split(';', 1)[0] ?? '';
+          const separator = pair.indexOf('=');
+          if (separator <= 0) return;
+          await session.defaultSession.cookies.set({
+            url: 'http://127.0.0.1:3010',
+            name: pair.slice(0, separator),
+            value: pair.slice(separator + 1),
+            httpOnly: /;\s*httponly(?:;|$)/i.test(setCookie),
+            sameSite: 'lax',
+            secure: false,
+          });
+        })
+      );
+      if (openIdeas.ok) {
+        console.log(`[OpenIdeas] ${openIdeas.detail}`);
+      } else {
+        console.warn(`[OpenIdeas] ${openIdeas.detail}`);
+      }
+      mark('openIdeasSidecar');
     }
   }
 
@@ -1164,6 +1196,7 @@ installQuitCleanup({
   // Stop aioncore subprocess — backend shutdown kills all agent children
   // transitively (no separate frontend workerTaskManager remains).
   stopBackend: () => backendManager.stop(),
+  stopOpenIdeas: () => openIdeasManager.stop(),
   destroyPetWindow: async () => {
     const { destroyPetWindow } = await import('./process/pet/petManager');
     destroyPetWindow();

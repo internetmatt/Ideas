@@ -22,6 +22,7 @@ vi.mock('react-router-dom', () => ({
 
 const login = vi.fn();
 vi.mock('@/renderer/hooks/context/AuthContext', () => ({
+  isProjectoHostedShell: () => false,
   useAuth: () => ({
     status: 'unauthenticated',
     login,
@@ -29,6 +30,7 @@ vi.mock('@/renderer/hooks/context/AuthContext', () => ({
 }));
 
 vi.mock('@renderer/hooks/context/AuthContext', () => ({
+  isProjectoHostedShell: () => false,
   useAuth: () => ({
     status: 'unauthenticated',
     login,

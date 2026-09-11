@@ -1,5 +1,6 @@
 import { blurActiveElement } from '@/renderer/utils/ui/focus';
 import {
+  WORKSPACE_ENSURE_EXPANDED_EVENT,
   WORKSPACE_HAS_FILES_EVENT,
   WORKSPACE_TOGGLE_EVENT,
   dispatchWorkspaceStateEvent,
@@ -99,6 +100,23 @@ export function useWorkspaceCollapse({
     return () => {
       window.removeEventListener(WORKSPACE_TOGGLE_EVENT, handleWorkspaceToggle);
     };
+  }, [workspaceEnabled, preferenceKey]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return undefined;
+    const ensureExpanded = () => {
+      if (!workspaceEnabled || !rightCollapsedRef.current) return;
+      setRightSiderCollapsed(false);
+      if (preferenceKey) {
+        try {
+          localStorage.setItem(`workspace-preference-${preferenceKey}`, 'expanded');
+        } catch {
+          // ignore persistence errors
+        }
+      }
+    };
+    window.addEventListener(WORKSPACE_ENSURE_EXPANDED_EVENT, ensureExpanded);
+    return () => window.removeEventListener(WORKSPACE_ENSURE_EXPANDED_EVENT, ensureExpanded);
   }, [workspaceEnabled, preferenceKey]);
 
   // Auto expand/collapse workspace panel based on files state (user preference takes priority)

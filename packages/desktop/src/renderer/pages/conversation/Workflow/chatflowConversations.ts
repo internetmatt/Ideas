@@ -57,9 +57,18 @@ export function asChatflowConversation(flow: FlowiseChatflow): TChatConversation
     id: `${VIRTUAL_CHATFLOW_PREFIX}${flow.id}`,
     name: flow.name,
     type: 'aionrs',
+    model: {
+      id: 'openideas-virtual',
+      platform: 'custom',
+      name: 'OpenIdeas',
+      base_url: '',
+      api_key: '',
+      use_model: '',
+    },
     created_at: at,
     modified_at: at,
     extra: {
+      workspace: '',
       session_workflow: attachmentFromChatflow(flow),
       openideas_virtual: true,
     },

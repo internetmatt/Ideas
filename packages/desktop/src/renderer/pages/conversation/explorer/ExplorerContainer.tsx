@@ -63,6 +63,10 @@ import { SearchPanel } from './search/SearchPanel';
 import type { SearchHit } from './search/searchModel';
 import { ScmPanel } from '../SourceControl/ScmPanel';
 import { rediscoverRepos, refreshAllRepos } from '../SourceControl/scmStore';
+import SessionWorkflowPanel from '../Workflow/SessionWorkflowPanel';
+import { readSessionWorkflow, sessionWorkflowPatch } from '../Workflow/sessionWorkflow';
+import { getConversationOrNull } from '../utils/conversationCache';
+import { setExplorerHostTab, useExplorerHostTab, type ExplorerHostTab } from './explorerHostTab';
 
 export type ExplorerContainerProps = {
   /** Owning project id — scopes the store's fact cache + localStorage UI state. */
@@ -177,7 +181,16 @@ export const ExplorerContainer: React.FC<ExplorerContainerProps> = ({ projectId 
   const { t } = useTranslation();
   const { openPreview } = usePreviewContext();
   const activeConversationId = useCurrentConversation();
-  const { data, isLoading, mutate } = useSWR(projectId ? `explorer-project/${projectId}` : null, (key: string) => {
+  const activeTab = useExplorerHostTab();
+  const { data: activeConversation, mutate: mutateConversation } = useSWR(
+    activeConversationId ? `conversation/${activeConversationId}` : null,
+    () => (activeConversationId ? getConversationOrNull(activeConversationId) : null)
+  );
+  const {
+    data,
+    isLoading,
+    mutate: mutateProject,
+  } = useSWR(projectId ? `explorer-project/${projectId}` : null, (key: string) => {
     // Derive the project id from the SWR key, not the captured `projectId`
     // closure, so a fetch's result can never be filed under a different key.
     const id = key.slice('explorer-project/'.length);
@@ -220,7 +233,7 @@ export const ExplorerContainer: React.FC<ExplorerContainerProps> = ({ projectId 
     if (!path) return; // cancelled
     try {
       const entry = await ipcBridge.project.attachFolder.invoke({ project_id: projectId, uri: pathToFileUri(path) });
-      await mutate();
+      await mutateProject();
       // Focus the attached (or, for a subdir, the existing focused) root.
       select(peKey(entry.pe_id, ''));
     } catch (e) {
@@ -237,7 +250,7 @@ export const ExplorerContainer: React.FC<ExplorerContainerProps> = ({ projectId 
   const handleRemoveFolder = async (peId: string): Promise<void> => {
     try {
       await ipcBridge.project.removeFolder.invoke({ project_id: projectId, pe_id: peId });
-      await mutate();
+      await mutateProject();
     } catch {
       Message.error(t('conversation.explorer.removeFailed'));
     }
@@ -252,7 +265,6 @@ export const ExplorerContainer: React.FC<ExplorerContainerProps> = ({ projectId 
   // unmounts the inactive one for `changes`, which is safe because the SCM
   // subscription is owned by its store per project, not by the component's mount
   // (see ScmPanel's lifecycle note) — a tab switch never drops the backend watch.
-  const [activeTab, setActiveTab] = useState<'files' | 'changes'>('files');
   // Busy flag for the top-bar refresh: spins the icon and disables re-click while a
   // refresh is in flight (so rapid clicks don't fan out redundant backend round-trips).
   const [refreshing, setRefreshing] = useState(false);
@@ -393,7 +405,7 @@ export const ExplorerContainer: React.FC<ExplorerContainerProps> = ({ projectId 
   // select it. Reuses the store's existing reveal path; does NOT open preview
   // (product decision Y — the click is "find the file", not "preview it").
   const handleRevealHit = (hit: SearchHit): void => {
-    setActiveTab('files');
+    setExplorerHostTab('files');
     reveal({ pe_id: hit.pe_id, relative_path: parentRel(hit.relative_path) });
     select(peKey(hit.pe_id, hit.relative_path));
   };
@@ -502,19 +514,19 @@ export const ExplorerContainer: React.FC<ExplorerContainerProps> = ({ projectId 
       if (activeTab === 'changes') {
         await Promise.all([rediscoverRepos(), refreshAllRepos()]);
       } else {
-        await Promise.all([mutate(), ...roots.map((root) => refreshRoot(root.pe_id))]);
+        await Promise.all([mutateProject(), ...roots.map((root) => refreshRoot(root.pe_id))]);
       }
     } finally {
       setRefreshing(false);
     }
   };
 
-  const tabButton = (key: 'files' | 'changes', label: string) => (
+  const tabButton = (key: ExplorerHostTab, label: string) => (
     <Button
       type='text'
       size='small'
       className={`flex-shrink-0 !px-8px ${activeTab === key ? '!text-t-primary !font-medium !bg-2' : '!text-t-secondary'}`}
-      onClick={() => setActiveTab(key)}
+      onClick={() => setExplorerHostTab(key)}
     >
       {label}
     </Button>
@@ -543,6 +555,7 @@ export const ExplorerContainer: React.FC<ExplorerContainerProps> = ({ projectId 
         <div className='flex items-center gap-2px overflow-x-auto flex-1 min-w-0'>
           {tabButton('files', t('conversation.explorer.tabs.files'))}
           {tabButton('changes', t('conversation.explorer.tabs.changes'))}
+          {tabButton('canvas', t('conversation.workflow.canvas'))}
         </div>
         <div className='flex items-center gap-2px flex-shrink-0'>
           {/* Right cluster order (VS Code parity): project-scope actions first (add
@@ -565,29 +578,31 @@ export const ExplorerContainer: React.FC<ExplorerContainerProps> = ({ projectId 
             />
           </Tooltip>
           {workspacePath && <WorkspaceOpenButton workspacePath={workspacePath} isTemporary={false} />}
-          <Tooltip
-            content={
-              activeTab === 'changes'
-                ? t('conversation.explorer.refreshChanges')
-                : t('conversation.explorer.refreshFiles')
-            }
-            mini
-            position='br'
-          >
-            <Button
-              type='text'
-              size='small'
-              className='flex items-center justify-center'
-              loading={refreshing}
-              icon={<Refresh theme='outline' size='16' />}
-              aria-label={
+          {activeTab !== 'canvas' && (
+            <Tooltip
+              content={
                 activeTab === 'changes'
                   ? t('conversation.explorer.refreshChanges')
                   : t('conversation.explorer.refreshFiles')
               }
-              onClick={() => void handleRefreshActiveTab()}
-            />
-          </Tooltip>
+              mini
+              position='br'
+            >
+              <Button
+                type='text'
+                size='small'
+                className='flex items-center justify-center'
+                loading={refreshing}
+                icon={<Refresh theme='outline' size='16' />}
+                aria-label={
+                  activeTab === 'changes'
+                    ? t('conversation.explorer.refreshChanges')
+                    : t('conversation.explorer.refreshFiles')
+                }
+                onClick={() => void handleRefreshActiveTab()}
+              />
+            </Tooltip>
+          )}
           {activeTab === 'files' && (
             <Tooltip content={t('conversation.explorer.collapseAll')} mini position='br'>
               <Button
@@ -645,6 +660,27 @@ export const ExplorerContainer: React.FC<ExplorerContainerProps> = ({ projectId 
       {activeTab === 'changes' && (
         <div className='flex-1 min-h-0'>
           <ScmPanel projectId={projectId} />
+        </div>
+      )}
+      {activeTab === 'canvas' && activeConversationId && (
+        <div className='flex-1 min-h-0'>
+          <SessionWorkflowPanel
+            conversationId={activeConversationId}
+            conversationName={activeConversation?.name}
+            attachment={readSessionWorkflow(activeConversation?.extra)}
+            variant='host'
+            onClose={() => setExplorerHostTab('files')}
+            onAttach={(next) => {
+              const patch = sessionWorkflowPatch(next);
+              void ipcBridge.conversation.update
+                .invoke({
+                  id: activeConversationId,
+                  updates: { extra: patch.extra as NonNullable<typeof activeConversation>['extra'] },
+                  merge_extra: patch.merge_extra,
+                })
+                .then(() => mutateConversation());
+            }}
+          />
         </div>
       )}
       <Modal

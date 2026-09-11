@@ -42,6 +42,7 @@ describe('installQuitCleanup', () => {
       destroyTray: () => calls.push('destroy-tray'),
       disposeCronResumeListener: () => calls.push('dispose-cron'),
       stopBackend,
+      stopOpenIdeas: async () => calls.push('stop-openideas'),
       destroyPetWindow: () => calls.push('destroy-pet'),
       logInfo: vi.fn(),
       logWarn: vi.fn(),
@@ -59,6 +60,7 @@ describe('installQuitCleanup', () => {
       'mark-explicit-quit',
       'destroy-tray',
       'dispose-cron',
+      'stop-openideas',
       'stop-backend-start',
     ]);
 
@@ -71,6 +73,7 @@ describe('installQuitCleanup', () => {
       'mark-explicit-quit',
       'destroy-tray',
       'dispose-cron',
+      'stop-openideas',
       'stop-backend-start',
       'destroy-pet',
       'quit-app',
@@ -79,17 +82,19 @@ describe('installQuitCleanup', () => {
 
   it('allows the second before-quit after cleanup has completed', async () => {
     let beforeQuitHandler: ((event: BeforeQuitEvent) => void) | undefined;
+    const quitApp = vi.fn();
 
     installQuitCleanup({
       onBeforeQuit: (handler) => {
         beforeQuitHandler = handler;
       },
-      quitApp: vi.fn(),
+      quitApp,
       setIsQuitting: vi.fn(),
       markExplicitQuit: vi.fn(),
       destroyTray: vi.fn(),
       disposeCronResumeListener: vi.fn(),
       stopBackend: async () => {},
+      stopOpenIdeas: async () => {},
       destroyPetWindow: vi.fn(),
       logInfo: vi.fn(),
       logWarn: vi.fn(),
@@ -97,7 +102,7 @@ describe('installQuitCleanup', () => {
     });
 
     beforeQuitHandler?.({ preventDefault: vi.fn() });
-    await flushMicrotasks();
+    await vi.waitFor(() => expect(quitApp).toHaveBeenCalledTimes(1));
 
     const preventDefault = vi.fn();
     beforeQuitHandler?.({ preventDefault });
