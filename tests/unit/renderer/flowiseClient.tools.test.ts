@@ -42,9 +42,7 @@ describe('OpenIdeas typed tools client', () => {
 
     const tools = await listTools('http://127.0.0.1:3010');
 
-    expect(tools).toEqual([
-      expect.objectContaining({ id: 'tool-1', name: 'search', description: 'Find things' }),
-    ]);
+    expect(tools).toEqual([expect.objectContaining({ id: 'tool-1', name: 'search', description: 'Find things' })]);
     expect(fetchSpy).toHaveBeenCalledTimes(1);
     const [url, init] = fetchSpy.mock.calls[0] as [string, RequestInit];
     expect(url).toBe('http://127.0.0.1:3010/api/v1/tools');
